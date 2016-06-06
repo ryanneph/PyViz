@@ -125,8 +125,10 @@ class Main(QMainWindow, Ui_MainWindow):
 
     def __openFileDialog__(self, checkedbool):
         foldername = QFileDialog.getExistingDirectory(self, 'Open Data (uvw) Directory',options=QFileDialog.ShowDirsOnly)
-        self.txtPath.setText(foldername)
-        self.__slot_changefig_txtPath__()
+
+        if foldername is not None and foldername!='':
+            self.txtPath.setText(foldername)
+            self.__slot_changefig_txtPath__()
 
 
 # Start GUI window
@@ -140,9 +142,9 @@ if __name__ == '__main__':
     #import matplotlib.pyplot as plt
     import pyVizHelpers as pvh
 
-    debugpath = '/Users/Ryan/Desktop/14_20_left_uvw/'
-    main.lastValidPath = debugpath
-    main.txtPath.setText(debugpath)
+    #debugpath = '/Users/Ryan/Desktop/14_20_left_uvw/'
+    #main.lastValidPath = debugpath
+    #main.txtPath.setText(debugpath)
     main.addfigBuilder('STW', pvh.FigBuilder_STW('stw'))
     main.addfigBuilder('Summary (2x3)',pvh.FigBuilder_Summary('summary'))
     main.addfigBuilder('Compare (1x3)',pvh.FigBuilder_Compare('compare'))
