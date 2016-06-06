@@ -1,6 +1,6 @@
 from PyQt4.uic import loadUiType
 from PyQt4.QtCore import pyqtSlot
-from PyQt4.QtGui import QMessageBox, QErrorMessage
+from PyQt4.QtGui import QMessageBox, QErrorMessage, QFileDialog
 import os, sys
 
 from matplotlib.figure import Figure
@@ -33,6 +33,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
         self.btn_PrevSlice.clicked.connect(self.__prevSliceClicked__)
         self.btn_NextSlice.clicked.connect(self.__nextSliceClicked__)
+        self.btn_Open.clicked.connect(self.__openFileDialog__)
         figblank = Figure()
         self.__drawfig__(figblank)
 
@@ -121,6 +122,11 @@ class Main(QMainWindow, Ui_MainWindow):
             return True
         else:
             return False
+
+    def __openFileDialog__(self, checkedbool):
+        foldername = QFileDialog.getExistingDirectory(self, 'Open Data (uvw) Directory',options=QFileDialog.ShowDirsOnly)
+        self.txtPath.setText(foldername)
+        self.__slot_changefig_txtPath__()
 
 
 # Start GUI window
