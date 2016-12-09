@@ -1,62 +1,71 @@
 from PyQt4.uic import loadUiType
-from PyQt4.QtCore import pyqtSlot
+# from PyQt4.QtCore import pyqtSlot
 from PyQt4.QtGui import QMessageBox, QErrorMessage, QFileDialog
-import os, sys
 
-from matplotlib.figure import Figure
+import os, sys
+from os.path import join
+import pickle
+
 from matplotlib.backends.backend_qt4agg import (
-        FigureCanvasQTAgg as FigureCanvas,
-        NavigationToolbar2QT as NavigationToolbar)
+        NavigationToolbar2QT as NavigationToolbar
+)
+
+sys.path.insert(0, '/home/ryan/projects/ctpt_segm')
+sys.path.insert(0, '/home/ryan/projects/ctpt_segm/TCIA_Scripts')
+
+import pyVizHelpers as pvh
+from TCIA_constants import *
 
 # Load QT UI as main window
+# change cwd to that which contains the entry module (this file/run script)
 try:
     os.chdir(os.path.dirname(sys.argv[0]))
 except:
     pass
 
+# compile the gui layout
 Ui_MainWindow, QMainWindow = loadUiType('window.ui')
 
 # GUI window subclass def
 class Main(QMainWindow, Ui_MainWindow):
     def __init__(self):
+        # initialize the gui window
         super(Main, self).__init__()
         self.setupUi(self)
-        # setup for figure changing
-        self.dict_key2figBuilder = {}
-        self.dict_name2key = {}
-        self.currentFigBuilder = None
+
+        # init cache variables
         self.lastValidPath = None
+        self.lastValidFile = None
 
         ## Setup Signal/slot connections
-        self.combo_ModeSelect.currentIndexChanged['QString'].connect(self.__slot_changefig_figselect__)
-        self.txtPath.editingFinished.connect(self.__slot_changefig_txtPath__)
-        self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
-        self.btn_PrevSlice.clicked.connect(self.__prevSliceClicked__)
-        self.btn_NextSlice.clicked.connect(self.__nextSliceClicked__)
+        # self.combo_ModeSelect.currentIndexChanged['QString'].connect(self.__slot_changefig_figselect__)
+        self.txtPath.editingFinished.connect(self.__slot_txtPath_editingFinished__)
+        self.num_Slice.setKeyboardTracking(False)
+        # self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
+        self.btn_PrevSlice.clicked.connect(self.__slot_PrevSlice_clicked__)
+        self.btn_NextSlice.clicked.connect(self.__slot_NextSlice_clicked__)
         self.btn_Open.clicked.connect(self.__openFileDialog__)
-        figblank = Figure()
-        self.__drawfig__(figblank)
+        self.listImages.currentTextChanged.connect(self.__slot_listGeneric_currentTextChanged__)
 
-    def addfigBuilder(self, name, figBuilder):
-        self.dict_name2key[name] = figBuilder.key
-        self.dict_key2figBuilder[figBuilder.key] = figBuilder
-        self.combo_ModeSelect.addItem(name)
+        # self.__refresh_feature_names__(self.txtPath.text())
+        self.figdef = pvh.FigureDefinition_Summary()
+        self.figdef.Build()
+        self.__updateCanvas__(self.figdef)
 
-    def __drawfig__(self, fig):
-        self.__clearfig__()
-        self.canvas = FigureCanvas(fig)
-        self.canvas.draw()
-        self.mplvl.addWidget(self.canvas)
-        self.toolbar = NavigationToolbar(self.canvas, self.mplFigs, coordinates=True)
-        self.mplvl.addWidget(self.toolbar)
+    def __updateCanvas__(self, figdef):
+        self.__clearCanvas__()
+        self.mplvl.addWidget(figdef.canvas)
+        self.mplvl.addWidget(NavigationToolbar(figdef.canvas, self.mplWindow, coordinates=True))
 
-    def __clearfig__(self):
+    def __clearCanvas__(self):
         for cnt in reversed(range(self.mplvl.count())):
-            # takeAt does both the jobs of itemAt and removeWidget
-            # namely it removes an item and returns it
             widget = self.mplvl.takeAt(cnt).widget()
             if widget is not None:
                 # widget will be None if the item is a layout
+                try:
+                    widget.figure.close()
+                except:
+                    print('couldn\'t close figure')
                 widget.close()
             #self.mplvl.removeWidget(self.canvas)
             #self.canvas.close()
@@ -64,71 +73,152 @@ class Main(QMainWindow, Ui_MainWindow):
             #self.toolbar.close()
             #self.canvas.draw()
 
-    def __get_CurrentFigBuilder__(self):
-        return self.dict_key2figBuilder[self.dict_name2key[self.combo_ModeSelect.currentText()]]
+    # def __get_CurrentFigBuilder__(self):
+    #     return self.dict_key2figBuilder[self.dict_name2key[self.combo_ModeSelect.currentText()]]
 
-    def __slot_changefig_figselect__(self, figname):
-        figname = str(figname)
-        rootPath = str(self.lastValidPath)
-        sliceNum = int(self.num_Slice.value())
-        self.__changefig__(figname, rootPath, sliceNum)
+    # def __slot_changefig_figselect__(self, figname):
+    #     figname = str(figname)
+    #     rootPath = str(self.lastValidPath)
+    #     sliceNum = int(self.num_Slice.value())
+    #     self.__changefig__(figname, rootPath, sliceNum)
 
-    def __slot_changefig_txtPath__(self):
-        import pyVizHelpers as pvh
-        figname = str(self.combo_ModeSelect.currentText())
-        rootPath = str(self.txtPath.text())
-        sliceNum = int(self.num_Slice.value())
-        if (os.path.exists(rootPath) and len(pvh.__getFiles__(rootPath + pvh.imagePaths['source'])) > 0):
-            self.statusBar.showMessage('Rebuilding figure cache, wait...')
-            self.__changefig__(figname, rootPath, sliceNum)
-            self.num_Slice.setMinimum(0)
-            self.num_Slice.setMaximum(self.dict_key2figBuilder[self.dict_name2key[figname]].slicecount-1)
-            self.lastValidPath = rootPath
-            self.statusBar.clearMessage()
-        else:
-            self.statusBar.showMessage('Invalid Path Supplied, Try again.')
+    # def __refresh_feature_names__(self, filePath):
+    #     self.listFeatures.clear()
+    #     doi = os.path.basename(filePath.rstrip('/'))
+    #     feature_name_list = os.listdir(join(p_FEATURES, doi))
+    #     self.listFeatures.addItems(feature_name_list)
 
-    def __slot_changefig_sliceNum__(self, sliceNum):
-        if (sliceNum >= 0 and sliceNum < self.__get_CurrentFigBuilder__().slicecount):
-            figname = str(self.combo_ModeSelect.currentText())
-            rootPath = str(self.lastValidPath)
-            sliceNum = int(sliceNum)
-            self.__changefig__(figname, rootPath, sliceNum)
+    def getSliceNum(self):
+        return int(self.num_Slice.value())
 
-    def __changefig__(self, figname, rootPath, sliceNum):
-        self.statusBar.showMessage('Loading, wait...')
-        figkey = self.dict_name2key[figname]
-        fig = self.dict_key2figBuilder[figkey].get_figure(rootPath, sliceNum)
-        if (fig == False):
-            self.statusBar.showMessage('Invalid Path Supplied, Try again.')
-            return False
-        else:
-            self.__drawfig__(fig)
-            self.statusBar.clearMessage()
-            return True
+    def __slot_listGeneric_currentTextChanged__(self, currentText):
+        if currentText:
+            self.__updateImage__()
 
-    def __prevSliceClicked__(self, checkedbool):
+    def __updateImage__(self):
+        # get CT filepath
+        currentText = self.listImages.currentItem().text()
+        basepath = str(self.txtPath.text())
+        relpath = currentText.lstrip('./')
+        fullpath = os.path.join(basepath, relpath)
+        self.lastValidFile = fullpath
+
+        # get mask filepath
+        if self.listMasks.currentItem():
+            currentText = self.listMasks.currentItem().text()
+            basepath = str(self.txtPath.text())
+            relpath = currentText.lstrip('./')
+            fullpath_mask = os.path.join(basepath, relpath)
+        else: fullpath_mask = None
+
+        slicenum = self.getSliceNum()
+
+        ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum)
+        self.figdef.drawImage(self.figdef.ax_ct, ctdata)
+        if fullpath and fullpath_mask:
+            maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum)
+            self.figdef.drawContour(self.figdef.ax_ct, maskdata)
+
+
+    def __slot_txtPath_editingFinished__(self):
+        filePath = str(self.txtPath.text())
+        self.__loadDirectory__(filePath)
+
+    def __loadDirectory__(self, root):
+        """recursively find all BaseVolume objects contained in pickle files under root"""
+        if (not root == self.lastValidPath):
+            if (os.path.exists(root)):
+                # self.__refresh_feature_names__(filePath)
+                self.statusBar.showMessage('Rebuilding Data List, wait...')
+                # self.__changefig__(figname, filePath, sliceNum)
+                # self.num_Slice.setMinimum(0)
+                # self.num_Slice.setMaximum(self.dict_key2figBuilder[self.dict_name2key[figname]].slicecount-1)
+                self.lastValidPath = root
+                img_path_list, mask_path_list, feature_path_list = getPickleFiles(root, recursive=True)
+                self.listImages.clear()
+                self.listImages.addItems(img_path_list)
+                self.listMasks.clear()
+                self.listMasks.addItems(mask_path_list)
+                self.listFeatures.clear()
+                self.listFeatures.addItems(feature_path_list)
+                self.statusBar.clearMessage()
+            else:
+                self.statusBar.showMessage('Invalid Path Supplied, Try again.')
+
+
+    # def __slot_changefig_sliceNum__(self, sliceNum):
+    #     if (sliceNum >= 0 and sliceNum < self.__get_CurrentFigBuilder__().slicecount):
+    #         figname = str(self.combo_ModeSelect.currentText())
+    #         rootPath = str(self.lastValidPath)
+    #         sliceNum = int(sliceNum)
+    #         self.__changefig__(figname, rootPath, sliceNum)
+
+    # def __changefig__(self, figname, filePath, sliceNum, feature_filename=None):
+    #     self.statusBar.showMessage('Loading, wait...')
+    #     figkey = self.dict_name2key[figname]
+    #     args = {'filePath': filePath,
+    #             'sliceNum': sliceNum,
+    #             'feature_filename': feature_filename}
+    #     fig = self.dict_key2figBuilder[figkey].get_figure(args)
+    #     if (fig == False):
+    #         self.statusBar.showMessage('Invalid Path Supplied, Try again.')
+    #         return False
+    #     else:
+    #         self.__drawfig__(fig)
+    #         self.statusBar.clearMessage()
+    #         return True
+
+    def __slot_PrevSlice_clicked__(self, checkedbool):
         currentSliceNum = int(self.num_Slice.value())
-        if (currentSliceNum > 0 and currentSliceNum < self.__get_CurrentFigBuilder__().slicecount):
+        if (currentSliceNum > 0 and currentSliceNum < self.figdef.sliceCount(self.lastValidFile)):
             self.num_Slice.setValue(currentSliceNum-1)
+            self.__updateImage__()
             return True
         else:
             return False
 
-    def __nextSliceClicked__(self, checkedbool):
+    def __slot_NextSlice_clicked__(self, checkedbool):
         currentSliceNum = int(self.num_Slice.value())
-        if (currentSliceNum >= 0 and currentSliceNum < self.__get_CurrentFigBuilder__().slicecount-1):
+        if (currentSliceNum >= 0 and currentSliceNum < self.figdef.sliceCount(self.lastValidFile)-1):
             self.num_Slice.setValue(currentSliceNum+1)
+            self.__updateImage__()
             return True
         else:
             return False
 
     def __openFileDialog__(self, checkedbool):
-        foldername = QFileDialog.getExistingDirectory(self, 'Open Data (uvw) Directory',options=QFileDialog.ShowDirsOnly)
-
+        if (self.lastValidPath):
+            default_dir = os.path.dirname(self.lastValidPath)
+        else: default_dir = None
+        foldername = QFileDialog.getExistingDirectory(self, 'Open DOI', directory=default_dir)
         if foldername is not None and foldername!='':
             self.txtPath.setText(foldername)
-            self.__slot_changefig_txtPath__()
+            self.__slot_txtPath_editingFinished__()
+
+def getPickleFiles(root, recursive=True):
+    image_path_list = []
+    mask_path_list = []
+    feature_path_list = []
+    for head, dirs, files in os.walk(root):
+        for f in files:
+            if (os.path.splitext(f)[1].lower() == '.pickle'):
+                fullfilepath = os.path.join(head, f)
+                with open(fullfilepath, mode='rb') as pf:
+                    obj = pickle.load(pf)
+                    cls = obj.__class__.__name__
+                    fullfilepath = fullfilepath.replace(root.rstrip('/')+'/', './')
+                    if ('basevolumepickle' in cls.lower() or
+                        'maskablevolumepickle' in cls.lower()):
+                        if not obj.feature_label:
+                            image_path_list.append(fullfilepath)
+                        else: feature_path_list.append(fullfilepath)
+                    elif ('roi' in cls.lower()):
+                        mask_path_list.append(fullfilepath)
+                    # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
+                    del obj
+        if not recursive:
+            del dirs[:]
+    return (image_path_list, mask_path_list, feature_path_list)
 
 
 # Start GUI window
@@ -139,16 +229,9 @@ if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     main = Main()
     ##################################
-    #import matplotlib.pyplot as plt
-    import pyVizHelpers as pvh
-
-    #debugpath = '/Users/Ryan/Desktop/14_20_left_uvw/'
-    #main.lastValidPath = debugpath
-    #main.txtPath.setText(debugpath)
-    main.addfigBuilder('STW', pvh.FigBuilder_STW('stw'))
-    main.addfigBuilder('Summary (2x3)',pvh.FigBuilder_Summary('summary'))
-    main.addfigBuilder('Compare (1x3)',pvh.FigBuilder_Compare('compare'))
-    main.addfigBuilder('Subtraction (1x3)',pvh.FigBuilder_Subtract('subtract'))
+    debugpath = '/media/hdd1/projects/radio/TCIA_NSCLC-RADIOMICS_LUNG1/DICOM_DATA/LUNG1-001/'
+    main.txtPath.setText(debugpath)
+    # main.addfigBuilder('Summary (CT and Feature)', pvh.FigBuilder_Summary('summary'))
     ##################################
     main.show()
     sys.exit(app.exec_())
