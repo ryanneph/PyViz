@@ -14,7 +14,7 @@ sys.path.insert(0, '/home/ryan/projects/ctpt_segm')
 sys.path.insert(0, '/home/ryan/projects/ctpt_segm/TCIA_Scripts')
 
 import pyVizHelpers as pvh
-from TCIA_constants import *
+from constants import *
 
 # Load QT UI as main window
 # change cwd to that which contains the entry module (this file/run script)
@@ -46,6 +46,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.btn_NextSlice.clicked.connect(self.__slot_NextSlice_clicked__)
         self.btn_Open.clicked.connect(self.__openFileDialog__)
         self.listImages.currentTextChanged.connect(self.__slot_listGeneric_currentTextChanged__)
+        self.listMasks.currentTextChanged.connect(self.__slot_listMasks_currentTextChanged__)
 
         # self.__refresh_feature_names__(self.txtPath.text())
         self.figdef = pvh.FigureDefinition_Summary()
@@ -82,26 +83,30 @@ class Main(QMainWindow, Ui_MainWindow):
     #     sliceNum = int(self.num_Slice.value())
     #     self.__changefig__(figname, rootPath, sliceNum)
 
-    # def __refresh_feature_names__(self, filePath):
-    #     self.listFeatures.clear()
-    #     doi = os.path.basename(filePath.rstrip('/'))
-    #     feature_name_list = os.listdir(join(p_FEATURES, doi))
-    #     self.listFeatures.addItems(feature_name_list)
+    def setSliceNum(self, n):
+        self.num_Slice.setValue(int(n))
 
     def getSliceNum(self):
         return int(self.num_Slice.value())
 
     def __slot_listGeneric_currentTextChanged__(self, currentText):
         if currentText:
+            self.setSliceNum(0)
+            self.__updateImage__()
+
+    def __slot_listMasks_currentTextChanged__(self, currentText):
+        if currentText:
             self.__updateImage__()
 
     def __updateImage__(self):
         # get CT filepath
-        currentText = self.listImages.currentItem().text()
-        basepath = str(self.txtPath.text())
-        relpath = currentText.lstrip('./')
-        fullpath = os.path.join(basepath, relpath)
-        self.lastValidFile = fullpath
+        if self.listImages.currentItem():
+            currentText = self.listImages.currentItem().text()
+            basepath = str(self.txtPath.text())
+            relpath = currentText.lstrip('./')
+            fullpath = os.path.join(basepath, relpath)
+            self.lastValidFile = fullpath
+        else: fullpath = None
 
         # get mask filepath
         if self.listMasks.currentItem():
@@ -113,16 +118,19 @@ class Main(QMainWindow, Ui_MainWindow):
 
         slicenum = self.getSliceNum()
 
-        ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum)
-        self.figdef.drawImage(self.figdef.ax_ct, ctdata)
-        if fullpath and fullpath_mask:
-            maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum)
-            self.figdef.drawContour(self.figdef.ax_ct, maskdata)
+        if fullpath:
+            ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum)
+            self.figdef.drawImage(self.figdef.ax_ct, ctdata)
+            if fullpath_mask:
+                maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum)
+                self.figdef.drawContour(self.figdef.ax_ct, maskdata)
+            else: self.figdef.clearContour(self.figdef.ax_ct)
 
 
     def __slot_txtPath_editingFinished__(self):
         filePath = str(self.txtPath.text())
-        self.__loadDirectory__(filePath)
+        if self.__loadDirectory__(filePath):
+            self.figdef.clearAxes()
 
     def __loadDirectory__(self, root):
         """recursively find all BaseVolume objects contained in pickle files under root"""
@@ -142,8 +150,10 @@ class Main(QMainWindow, Ui_MainWindow):
                 self.listFeatures.clear()
                 self.listFeatures.addItems(feature_path_list)
                 self.statusBar.clearMessage()
+                return True
             else:
                 self.statusBar.showMessage('Invalid Path Supplied, Try again.')
+                return False
 
 
     # def __slot_changefig_sliceNum__(self, sliceNum):
@@ -209,9 +219,10 @@ def getPickleFiles(root, recursive=True):
                     fullfilepath = fullfilepath.replace(root.rstrip('/')+'/', './')
                     if ('basevolumepickle' in cls.lower() or
                         'maskablevolumepickle' in cls.lower()):
-                        if not obj.feature_label:
-                            image_path_list.append(fullfilepath)
-                        else: feature_path_list.append(fullfilepath)
+                        image_path_list.append(fullfilepath)
+                        # if not obj.feature_label:
+                        #     image_path_list.append(fullfilepath)
+                        # else: feature_path_list.append(fullfilepath)
                     elif ('roi' in cls.lower()):
                         mask_path_list.append(fullfilepath)
                     # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
