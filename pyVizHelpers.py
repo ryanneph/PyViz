@@ -8,7 +8,7 @@ import numpy as np
 from utils.rttypes import MaskableVolume, ROI
 import matplotlib as mpl
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt4agg import (
+from matplotlib.backends.backend_qt5agg import (
         FigureCanvasQTAgg as FigureCanvas,
         NavigationToolbar2QT as NavigationToolbar)
 from constants import *

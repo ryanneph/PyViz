@@ -1,12 +1,14 @@
-from PyQt4.uic import loadUiType
-# from PyQt4.QtCore import pyqtSlot
-from PyQt4.QtGui import QMessageBox, QErrorMessage, QFileDialog
+from PyQt5.uic import loadUiType
+# from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtWidgets import QMessageBox, QErrorMessage, QFileDialog
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 import os, sys
 from os.path import join
 import pickle
 
-from matplotlib.backends.backend_qt4agg import (
+from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar
 )
 
@@ -235,9 +237,9 @@ def getPickleFiles(root, recursive=True):
 # Start GUI window
 if __name__ == '__main__':
     import sys
-    from PyQt4 import QtGui
+    from PyQt5 import QtWidgets
 
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     main = Main()
     ##################################
     debugpath = '/media/hdd1/projects/radio/TCIA_NSCLC-RADIOMICS_LUNG1/DICOM_DATA/LUNG1-001/'
