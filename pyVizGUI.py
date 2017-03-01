@@ -93,7 +93,7 @@ class Main(QMainWindow, Ui_MainWindow):
 
     def __slot_listGeneric_currentTextChanged__(self, currentText):
         if currentText:
-            self.setSliceNum(0)
+            # self.setSliceNum(0)
             self.__updateImage__()
 
     def __slot_listMasks_currentTextChanged__(self, currentText):
@@ -144,9 +144,9 @@ class Main(QMainWindow, Ui_MainWindow):
                 # self.num_Slice.setMinimum(0)
                 # self.num_Slice.setMaximum(self.dict_key2figBuilder[self.dict_name2key[figname]].slicecount-1)
                 self.lastValidPath = root
-                img_path_list, mask_path_list, feature_path_list = getPickleFiles(root, recursive=True)
+                img_path_list, mask_path_list, feature_path_list = getImageFiles(root, recursive=True)
                 self.listImages.clear()
-                self.listImages.addItems(img_path_list)
+                self.listImages.addItems(sorted(img_path_list))
                 self.listMasks.clear()
                 self.listMasks.addItems(mask_path_list)
                 self.listFeatures.clear()
@@ -207,7 +207,7 @@ class Main(QMainWindow, Ui_MainWindow):
             self.txtPath.setText(foldername)
             self.__slot_txtPath_editingFinished__()
 
-def getPickleFiles(root, recursive=True):
+def getImageFiles(root, recursive=True):
     image_path_list = []
     mask_path_list = []
     feature_path_list = []
@@ -229,6 +229,9 @@ def getPickleFiles(root, recursive=True):
                         mask_path_list.append(fullfilepath)
                     # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
                     del obj
+            elif (os.path.splitext(f)[1].lower() == '.dcm'):
+                image_path_list.append(head.replace(root.rstrip('/')+'/', './'))
+                break
         if not recursive:
             del dirs[:]
     return (image_path_list, mask_path_list, feature_path_list)

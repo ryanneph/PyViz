@@ -148,6 +148,9 @@
            <height>0</height>
           </size>
          </property>
+         <property name="maximum">
+          <number>999</number>
+         </property>
         </widget>
        </item>
       </layout>
@@ -179,10 +182,24 @@
           <widget class="QListWidget" name="listImages"/>
          </item>
          <item>
-          <widget class="QListWidget" name="listMasks"/>
+          <widget class="QListWidget" name="listMasks">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
          </item>
          <item>
-          <widget class="QListWidget" name="listFeatures"/>
+          <widget class="QListWidget" name="listFeatures">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>

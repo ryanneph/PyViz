@@ -13,16 +13,18 @@ from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar)
 from constants import *
 
-def __getFiles__(rootDirPath, recursive=False):
-    #Return a list of filepaths in the first level of the rootDirPath
-    returnFileList = []
-    for dirName, subdirList, fileList in os.walk(rootDirPath):
-        for fname in fileList:
-            if ('.pickle' in fname.lower()) and not ('roi' in fname.lower()):
-                returnFileList.append(join(dirName, fname))
-        if (not recursive):
-            del subdirList[:]  # keep the walk from recursing
-    return sorted(returnFileList)
+# def __getFiles__(rootDirPath, recursive=False):
+#     #Return a list of filepaths in the first level of the rootDirPath
+#     returnFileList = []
+#     for dirName, subdirList, fileList in os.walk(rootDirPath):
+#         for fname in fileList:
+#             if ('.pickle' in fname.lower()) and not ('roi' in fname.lower()):
+#                 returnFileList.append(join(dirName, fname))
+#             if ('.dcm' in fname.lower()):
+#                 returnFileList.append(dirName)
+#         if (not recursive):
+#             del subdirList[:]  # keep the walk from recursing
+#     return sorted(returnFileList)
 
 
 from abc import ABCMeta, abstractmethod
@@ -117,13 +119,14 @@ class BaseDataProvider:
         return
 
     def __loadFile__(self, filepath):
-        if not self.__checkCached__(filepath):
-            # [re]load data volume from file
-            if not os.path.exists(filepath):
-                raise FileNotFoundError
-            del self.__cachedimage__
-            self.__cachedimage__ = self.__fileLoader__(filepath)
-            self.__cachedimagepath__ = filepath
+        if filepath:
+            if not self.__checkCached__(filepath):
+                # [re]load data volume from file
+                if not os.path.exists(filepath):
+                    raise FileNotFoundError
+                del self.__cachedimage__
+                self.__cachedimage__ = self.__fileLoader__(filepath)
+                self.__cachedimagepath__ = filepath
 
     def getImageSlice(self, filepath, slicenum):
         self.__loadFile__(filepath)
@@ -138,7 +141,10 @@ class ImageDataProvider(BaseDataProvider):
         super().__init__()
 
     def __fileLoader__(self, filepath):
-        return rttypes.MaskableVolume().fromPickle(filepath)
+        if os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.pickle':
+            return rttypes.MaskableVolume.fromPickle(filepath)
+        elif os.path.isdir(filepath):
+            return rttypes.MaskableVolume.fromDir(filepath, recursive=True)
 
 class MaskDataProvider(BaseDataProvider):
     def __init__(self):
