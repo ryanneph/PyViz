@@ -1,11 +1,11 @@
 import sys
-sys.path.insert(0, '/home/ryan/projects/python_libs/')
+sys.path.insert(0, '/home/ryan/projects/python_libs/PyMedImage')
 sys.path.insert(0, '/home/ryan/projects/ctpt_segm/HYPO_Scripts')
 import os
 from os.path import join, exists
 import numpy as np
 
-from utils.rttypes import MaskableVolume, ROI
+from pymedimage.rttypes import MaskableVolume, ROI
 import matplotlib as mpl
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import (
@@ -31,7 +31,9 @@ from abc import ABCMeta, abstractmethod
 class baseFigureDefinition:
     __metaclass__ = ABCMeta
     def __init__(self):
-        pass
+        self.figure = None
+        self.canvas = None
+        self.__initialized__ = None
 
     # must be redefined by subclass
     @abstractmethod
@@ -71,13 +73,17 @@ class FigureDefinition_Summary(baseFigureDefinition):
             self.clearContour(ax)
         self.canvas.draw()
 
-    def drawImage(self, ax, data):
+    def drawImage(self, ax, data, cmap='gray'):
         """update ax with new image data"""
         if (not self.__initialized__): self.Build()
 
         # if nothing is drawn yet, add axes instance
         if len(ax.get_images()) == 0:
-            ax.imshow(data, cmap='gray')
+            try:
+                ax.imshow(data, cmap=cmap)
+            except Exception as e:
+                print(e)
+                return
             # fit imageAxes to current data extents
             # ax.autoscale(enable=True)
         else:
@@ -99,10 +105,10 @@ class FigureDefinition_Summary(baseFigureDefinition):
         # ax.autoscale_view()
         self.canvas.draw()
 
-    def sliceCount(self, filepath):
-        return self.ctprovider.getSliceCount(filepath)
+    def sliceCount(self, filepath, orientation=0):
+        return self.ctprovider.getSliceCount(filepath, orientation)
 
-from utils import rttypes as rttypes
+from pymedimage import rttypes as rttypes
 class BaseDataProvider:
     __metaclass__ = ABCMeta
     def __init__(self):
@@ -128,13 +134,13 @@ class BaseDataProvider:
                 self.__cachedimage__ = self.__fileLoader__(filepath)
                 self.__cachedimagepath__ = filepath
 
-    def getImageSlice(self, filepath, slicenum):
+    def getImageSlice(self, filepath, slicenum, orientation=0):
         self.__loadFile__(filepath)
-        return self.__cachedimage__.getSlice(slicenum)
+        return self.__cachedimage__.getSlice(slicenum, orientation)
 
-    def getSliceCount(self, filepath):
+    def getSliceCount(self, filepath, orientation=0):
         self.__loadFile__(filepath)
-        return self.__cachedimage__.frameofreference.size[2]
+        return self.__cachedimage__.frameofreference.size[2-orientation]
 
 class ImageDataProvider(BaseDataProvider):
     def __init__(self):
@@ -143,6 +149,11 @@ class ImageDataProvider(BaseDataProvider):
     def __fileLoader__(self, filepath):
         if os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.pickle':
             return rttypes.MaskableVolume.fromPickle(filepath)
+        elif (os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.raw'):
+            try:
+                return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 256))
+            except:
+                return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 1))
         elif os.path.isdir(filepath):
             return rttypes.MaskableVolume.fromDir(filepath, recursive=True)
 
@@ -152,4 +163,3 @@ class MaskDataProvider(BaseDataProvider):
 
     def __fileLoader__(self, filepath):
         return rttypes.ROI.fromPickle(filepath).makeDenseMask()
-

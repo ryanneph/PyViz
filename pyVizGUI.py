@@ -7,10 +7,12 @@ matplotlib.use('Qt5Agg')
 import os, sys
 from os.path import join
 import pickle
+import numpy as np
 
 from matplotlib.backends.backend_qt5agg import (
         NavigationToolbar2QT as NavigationToolbar
 )
+from matplotlib.colors import ListedColormap
 
 sys.path.insert(0, '/home/ryan/projects/ctpt_segm')
 sys.path.insert(0, '/home/ryan/projects/ctpt_segm/TCIA_Scripts')
@@ -39,7 +41,12 @@ class Main(QMainWindow, Ui_MainWindow):
         self.lastValidPath = None
         self.lastValidFile = None
 
-        ## Setup Signal/slot connections
+        # state variables
+        self.cmap_manual_sel = False
+
+        ########### Setup Signal/slot connections #################
+        self.combo_cmap.activated.connect(self.__slot_change_cmap__)
+        self.combo_orientslice.activated.connect(self.__slot_change_sliceorient__)
         # self.combo_ModeSelect.currentIndexChanged['QString'].connect(self.__slot_changefig_figselect__)
         self.txtPath.editingFinished.connect(self.__slot_txtPath_editingFinished__)
         self.num_Slice.setKeyboardTracking(False)
@@ -49,11 +56,20 @@ class Main(QMainWindow, Ui_MainWindow):
         self.btn_Open.clicked.connect(self.__openFileDialog__)
         self.listImages.currentTextChanged.connect(self.__slot_listGeneric_currentTextChanged__)
         self.listMasks.currentTextChanged.connect(self.__slot_listMasks_currentTextChanged__)
+        ###########################################################
 
         # self.__refresh_feature_names__(self.txtPath.text())
         self.figdef = pvh.FigureDefinition_Summary()
         self.figdef.Build()
         self.__updateCanvas__(self.figdef)
+
+    def __slot_change_cmap__(self, idx):
+        self.cmap_manual_sel = True
+        self.figdef.clearAxes()
+        self.__updateImage__()
+
+    def __slot_change_sliceorient__(self, idx):
+        self.__updateImage__()
 
     def __updateCanvas__(self, figdef):
         self.__clearCanvas__()
@@ -121,10 +137,42 @@ class Main(QMainWindow, Ui_MainWindow):
         slicenum = self.getSliceNum()
 
         if fullpath:
-            ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum)
-            self.figdef.drawImage(self.figdef.ax_ct, ctdata)
+            # cmap selection
+            if not self.cmap_manual_sel:
+                if 'level2_clusters' in fullpath.lower():
+                    # colormap that matches aapm abstract heatmap
+                    cmap = ListedColormap(np.array([[255,255,255],
+                                                    [255,255,255],
+                                                    [255,255,255],
+                                                    [0, 128, 0],
+                                                    [255,0,0],
+                                                    [50,202,202],
+                                                    [191,0,191],
+                                                    [191,191,0],
+                                                    [234,116,0]])/255, 'clusters')
+                elif 'level1_clusters' in fullpath.lower():
+                    cmap='Paired'
+                elif 'feature=' in fullpath.lower() or os.path.splitext(fullpath)[1] == '.raw':
+                    cmap='viridis'
+                else:
+                    cmap='gray'
+                try:
+                    self.combo_cmap.setCurrentIndex(self.combo_cmap.findText(cmap))
+                except: pass
+            else:
+                cmap = self.combo_cmap.currentText()
+            orientation = self.combo_orientslice.currentText()
+            if (orientation.lower() == 'coronal'): orientation = 1
+            elif (orientation.lower() == 'sagittal'): orientation = 2
+            else: orientation = 0 # axial
+            realslicenum = self.figdef.ctprovider.getSliceCount(fullpath, orientation)
+            if realslicenum <= slicenum:
+                slicenum = realslicenum-1
+                self.setSliceNum(realslicenum-1)
+            ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation)
+            self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap)
             if fullpath_mask:
-                maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum)
+                maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum, orientation)
                 self.figdef.drawContour(self.figdef.ax_ct, maskdata)
             else: self.figdef.clearContour(self.figdef.ax_ct)
 
@@ -133,6 +181,8 @@ class Main(QMainWindow, Ui_MainWindow):
         filePath = str(self.txtPath.text())
         if self.__loadDirectory__(filePath):
             self.figdef.clearAxes()
+            # reset auto cmap selection
+            self.cmap_manual_sel = False
 
     def __loadDirectory__(self, root):
         """recursively find all BaseVolume objects contained in pickle files under root"""
@@ -216,19 +266,24 @@ def getImageFiles(root, recursive=True):
             if (os.path.splitext(f)[1].lower() == '.pickle'):
                 fullfilepath = os.path.join(head, f)
                 with open(fullfilepath, mode='rb') as pf:
-                    obj = pickle.load(pf)
-                    cls = obj.__class__.__name__
-                    fullfilepath = fullfilepath.replace(root.rstrip('/')+'/', './')
-                    if ('basevolumepickle' in cls.lower() or
-                        'maskablevolumepickle' in cls.lower()):
-                        image_path_list.append(fullfilepath)
-                        # if not obj.feature_label:
-                        #     image_path_list.append(fullfilepath)
-                        # else: feature_path_list.append(fullfilepath)
-                    elif ('roi' in cls.lower()):
-                        mask_path_list.append(fullfilepath)
-                    # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
-                    del obj
+                    try:
+                        obj = pickle.load(pf)
+                        cls = obj.__class__.__name__
+                        fullfilepath = fullfilepath.replace(root.rstrip('/')+'/', './')
+                        if ('basevolumepickle' in cls.lower() or
+                            'maskablevolumepickle' in cls.lower()):
+                            image_path_list.append(fullfilepath)
+                            # if not obj.feature_label:
+                            #     image_path_list.append(fullfilepath)
+                            # else: feature_path_list.append(fullfilepath)
+                        elif ('roi' in cls.lower()):
+                            mask_path_list.append(fullfilepath)
+                        # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
+                        del obj
+                    except:
+                        pass
+            elif (os.path.splitext(f)[1].lower() in ['.raw', '.bin']):
+                image_path_list.append(os.path.join(head, f).replace(root.rstrip('/')+'/', './'))
             elif (os.path.splitext(f)[1].lower() == '.dcm'):
                 image_path_list.append(head.replace(root.rstrip('/')+'/', './'))
                 break
@@ -245,7 +300,8 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     main = Main()
     ##################################
-    debugpath = '/media/hdd1/projects/radio/TCIA_NSCLC-RADIOMICS_LUNG1/DICOM_DATA/LUNG1-001/'
+    # debugpath = '/media/hdd1/projects/radio/TCIA_NSCLC-RADIOMICS_LUNG1/DICOM_DATA/LUNG1-001/'
+    debugpath = '/home/ryan/projects/rs4pi/dosecalc_gpu/data/temp'
     main.txtPath.setText(debugpath)
     # main.addfigBuilder('Summary (CT and Feature)', pvh.FigBuilder_Summary('summary'))
     ##################################
