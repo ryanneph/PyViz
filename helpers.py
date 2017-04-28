@@ -1,6 +1,4 @@
-import sys
-sys.path.insert(0, '/home/ryan/projects/python_libs/PyMedImage')
-sys.path.insert(0, '/home/ryan/projects/ctpt_segm/HYPO_Scripts')
+import __link_pymedimage__
 import os
 from os.path import join, exists
 import numpy as np
@@ -151,9 +149,12 @@ class ImageDataProvider(BaseDataProvider):
             return rttypes.MaskableVolume.fromPickle(filepath)
         elif (os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.raw'):
             try:
-                return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 256))
+                return rttypes.MaskableVolume.fromBinary(filepath, (513,513,513))
             except:
-                return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 1))
+                try:
+                    return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 256))
+                except:
+                    return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 1))
         elif os.path.isdir(filepath):
             return rttypes.MaskableVolume.fromDir(filepath, recursive=True)
 

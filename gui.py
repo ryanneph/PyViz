@@ -14,10 +14,7 @@ from matplotlib.backends.backend_qt5agg import (
 )
 from matplotlib.colors import ListedColormap
 
-sys.path.insert(0, '/home/ryan/projects/ctpt_segm')
-sys.path.insert(0, '/home/ryan/projects/ctpt_segm/TCIA_Scripts')
-
-import pyVizHelpers as pvh
+import helpers as pvh
 from constants import *
 
 # Load QT UI as main window
@@ -50,7 +47,7 @@ class Main(QMainWindow, Ui_MainWindow):
         # self.combo_ModeSelect.currentIndexChanged['QString'].connect(self.__slot_changefig_figselect__)
         self.txtPath.editingFinished.connect(self.__slot_txtPath_editingFinished__)
         self.num_Slice.setKeyboardTracking(False)
-        # self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
+        self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
         self.btn_PrevSlice.clicked.connect(self.__slot_PrevSlice_clicked__)
         self.btn_NextSlice.clicked.connect(self.__slot_NextSlice_clicked__)
         self.btn_Open.clicked.connect(self.__openFileDialog__)
@@ -208,12 +205,8 @@ class Main(QMainWindow, Ui_MainWindow):
                 return False
 
 
-    # def __slot_changefig_sliceNum__(self, sliceNum):
-    #     if (sliceNum >= 0 and sliceNum < self.__get_CurrentFigBuilder__().slicecount):
-    #         figname = str(self.combo_ModeSelect.currentText())
-    #         rootPath = str(self.lastValidPath)
-    #         sliceNum = int(sliceNum)
-    #         self.__changefig__(figname, rootPath, sliceNum)
+    def __slot_changefig_sliceNum__(self, sliceNum):
+        self.__updateImage__()
 
     # def __changefig__(self, figname, filePath, sliceNum, feature_filename=None):
     #     self.statusBar.showMessage('Loading, wait...')
@@ -299,11 +292,5 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
     main = Main()
-    ##################################
-    # debugpath = '/media/hdd1/projects/radio/TCIA_NSCLC-RADIOMICS_LUNG1/DICOM_DATA/LUNG1-001/'
-    debugpath = '/home/ryan/projects/rs4pi/dosecalc_gpu/data/temp'
-    main.txtPath.setText(debugpath)
-    # main.addfigBuilder('Summary (CT and Feature)', pvh.FigBuilder_Summary('summary'))
-    ##################################
     main.show()
     sys.exit(app.exec_())
