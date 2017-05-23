@@ -54,7 +54,7 @@
        <property name="verticalSpacing">
         <number>0</number>
        </property>
-       <item row="1" column="3">
+       <item row="1" column="5">
         <spacer name="horizontalSpacer">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -70,7 +70,7 @@
          </property>
         </spacer>
        </item>
-       <item row="1" column="7">
+       <item row="1" column="9">
         <widget class="QPushButton" name="btn_NextSlice">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -92,7 +92,7 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="5">
+       <item row="1" column="7">
         <widget class="QSpinBox" name="num_Slice">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -111,7 +111,7 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="7">
+       <item row="0" column="9">
         <widget class="QPushButton" name="btn_Open">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -130,53 +130,7 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="2">
-        <widget class="QComboBox" name="combo_orientslice">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>80</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="editable">
-          <bool>false</bool>
-         </property>
-         <property name="currentText">
-          <string>Axial</string>
-         </property>
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <property name="maxCount">
-          <number>10</number>
-         </property>
-         <property name="minimumContentsLength">
-          <number>0</number>
-         </property>
-         <item>
-          <property name="text">
-           <string>Axial</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Coronal</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Sagittal</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="0" column="0" colspan="6">
+       <item row="0" column="0" colspan="8">
         <widget class="QLineEdit" name="txtPath">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -186,7 +140,7 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="4">
+       <item row="1" column="6">
         <widget class="QPushButton" name="btn_PrevSlice">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -250,6 +204,9 @@
        </item>
        <item row="1" column="0">
         <widget class="QSlider" name="horizontalSlider">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="sizePolicy">
           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -267,8 +224,11 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="8" rowspan="3">
+       <item row="0" column="10" rowspan="3">
         <widget class="QPushButton" name="btn_Refresh">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="sizePolicy">
           <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -278,6 +238,66 @@
          <property name="text">
           <string>Refresh</string>
          </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QComboBox" name="combo_orientslice">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="editable">
+          <bool>false</bool>
+         </property>
+         <property name="currentText">
+          <string>Axial</string>
+         </property>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <property name="maxCount">
+          <number>10</number>
+         </property>
+         <property name="minimumContentsLength">
+          <number>0</number>
+         </property>
+         <item>
+          <property name="text">
+           <string>Axial</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Coronal</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Sagittal</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="4">
+        <widget class="QComboBox" name="combo_yaxis">
+         <item>
+          <property name="text">
+           <string>Upper</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Lower</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>

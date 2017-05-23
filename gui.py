@@ -43,7 +43,8 @@ class Main(QMainWindow, Ui_MainWindow):
 
         ########### Setup Signal/slot connections #################
         self.combo_cmap.activated.connect(self.__slot_change_cmap__)
-        self.combo_orientslice.activated.connect(self.__slot_change_sliceorient__)
+        self.combo_orientslice.activated.connect(self.__slot_simple_update_image__)
+        self.combo_yaxis.activated.connect(self.__slot_simple_update_image__)
         # self.combo_ModeSelect.currentIndexChanged['QString'].connect(self.__slot_changefig_figselect__)
         self.txtPath.editingFinished.connect(self.__slot_txtPath_editingFinished__)
         self.num_Slice.setKeyboardTracking(False)
@@ -65,7 +66,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.figdef.clearAxes()
         self.__updateImage__()
 
-    def __slot_change_sliceorient__(self, idx):
+    def __slot_simple_update_image__(self, idx):
         self.__updateImage__()
 
     def __updateCanvas__(self, figdef):
@@ -162,16 +163,20 @@ class Main(QMainWindow, Ui_MainWindow):
             if (orientation.lower() == 'coronal'): orientation = 1
             elif (orientation.lower() == 'sagittal'): orientation = 2
             else: orientation = 0 # axial
+            yaxis_flip = self.combo_yaxis.currentText()
+            if (yaxis_flip.lower() == 'lower'): yaxis_flip = True
+            else: yaxis_flip = False # axial
             realslicenum = self.figdef.ctprovider.getSliceCount(fullpath, orientation)
             if realslicenum <= slicenum:
                 slicenum = realslicenum-1
                 self.setSliceNum(realslicenum-1)
             ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation)
-            self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap)
-            if fullpath_mask:
-                maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum, orientation)
-                self.figdef.drawContour(self.figdef.ax_ct, maskdata)
-            else: self.figdef.clearContour(self.figdef.ax_ct)
+            if ctdata is not None:
+                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip)
+                if fullpath_mask:
+                    maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum, orientation)
+                    self.figdef.drawContour(self.figdef.ax_ct, maskdata)
+                else: self.figdef.clearContour(self.figdef.ax_ct)
 
 
     def __slot_txtPath_editingFinished__(self):
@@ -257,24 +262,26 @@ def getImageFiles(root, recursive=True):
     for head, dirs, files in os.walk(root):
         for f in files:
             if (os.path.splitext(f)[1].lower() == '.pickle'):
-                fullfilepath = os.path.join(head, f)
-                with open(fullfilepath, mode='rb') as pf:
-                    try:
-                        obj = pickle.load(pf)
-                        cls = obj.__class__.__name__
-                        fullfilepath = fullfilepath.replace(root.rstrip('/')+'/', './')
-                        if ('basevolumepickle' in cls.lower() or
-                            'maskablevolumepickle' in cls.lower()):
-                            image_path_list.append(fullfilepath)
-                            # if not obj.feature_label:
-                            #     image_path_list.append(fullfilepath)
-                            # else: feature_path_list.append(fullfilepath)
-                        elif ('roi' in cls.lower()):
-                            mask_path_list.append(fullfilepath)
-                        # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
-                        del obj
-                    except:
-                        pass
+                fullfilepath = os.path.join(head, f).replace(root.rstrip('/')+'/', './')
+                image_path_list.append(fullfilepath)
+                #  with open(fullfilepath, mode='rb') as pf:
+                #      try:
+                #          obj = pickle.load(pf)
+                #          cls = obj.__class__.__name__
+                #          fullfilepath = fullfilepath.replace(root.rstrip('/')+'/', './')
+                #          if ('basevolumepickle' in cls.lower() or
+                #              'maskablevolumepickle' in cls.lower()):
+                #              image_path_list.append(fullfilepath)
+                #              # if not obj.feature_label:
+                #              #     image_path_list.append(fullfilepath)
+                #              # else: feature_path_list.append(fullfilepath)
+                #          elif ('roi' in cls.lower()):
+                #              mask_path_list.append(fullfilepath)
+                #          # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
+                #          del obj
+                #      except:
+                #          raise
+                #          pass
             elif (os.path.splitext(f)[1].lower() in ['.raw', '.bin']):
                 image_path_list.append(os.path.join(head, f).replace(root.rstrip('/')+'/', './'))
             elif (os.path.splitext(f)[1].lower() == '.dcm'):
@@ -292,5 +299,7 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
     main = Main()
+    path = '/home/ryan/projects/rs4pi/dosecalc_gpu/data/temp'
+    main.txtPath.setText(path)
     main.show()
     sys.exit(app.exec_())

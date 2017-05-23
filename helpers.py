@@ -1,4 +1,5 @@
 import __link_pymedimage__
+import sys
 import os
 from os.path import join, exists
 import numpy as np
@@ -31,6 +32,7 @@ class baseFigureDefinition:
     def __init__(self):
         self.figure = None
         self.canvas = None
+        self.contours = None
         self.__initialized__ = None
 
     # must be redefined by subclass
@@ -44,6 +46,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
     def __init__(self):
         super().__init__()
         self.ax_ct = None
+        self.origin = None
 
     def Build(self):
         fig = Figure()
@@ -71,14 +74,18 @@ class FigureDefinition_Summary(baseFigureDefinition):
             self.clearContour(ax)
         self.canvas.draw()
 
-    def drawImage(self, ax, data, cmap='gray'):
+    def drawImage(self, ax, data, cmap='gray', flipy=False):
         """update ax with new image data"""
         if (not self.__initialized__): self.Build()
+
+        origin = 'lower' if flipy else 'upper'
+        if origin != self.origin:
+            self.clearAxes()
 
         # if nothing is drawn yet, add axes instance
         if len(ax.get_images()) == 0:
             try:
-                ax.imshow(data, cmap=cmap)
+                ax.imshow(data, cmap=cmap, origin=origin)
             except Exception as e:
                 print(e)
                 return
@@ -93,12 +100,14 @@ class FigureDefinition_Summary(baseFigureDefinition):
         self.canvas.draw()
 
     def clearContour(self, ax):
-        ax.collections = []
-        self.canvas.draw()
+        if self.contours is not None:
+            for c in self.contours.collections:
+                c.remove()
+            self.canvas.draw()
 
     def drawContour(self, ax, maskdata):
         self.clearContour(ax)
-        ax.contour(maskdata, levels=[0], colors=['red'])
+        self.contours = ax.contour(maskdata, levels=[0], colors=['red'])
         # ax.relim()
         # ax.autoscale_view()
         self.canvas.draw()
@@ -123,40 +132,56 @@ class BaseDataProvider:
         return
 
     def __loadFile__(self, filepath):
+        status = False
         if filepath:
+            status = True
             if not self.__checkCached__(filepath):
+                status = False
                 # [re]load data volume from file
                 if not os.path.exists(filepath):
                     raise FileNotFoundError
                 del self.__cachedimage__
                 self.__cachedimage__ = self.__fileLoader__(filepath)
-                self.__cachedimagepath__ = filepath
+                if self.__cachedimage__:
+                    status = True
+                    self.__cachedimagepath__ = filepath
+        return status
 
     def getImageSlice(self, filepath, slicenum, orientation=0):
-        self.__loadFile__(filepath)
-        return self.__cachedimage__.getSlice(slicenum, orientation)
+        if self.__loadFile__(filepath):
+            if self.__cachedimage__:
+                return self.__cachedimage__.getSlice(slicenum, orientation)
+        return None
 
     def getSliceCount(self, filepath, orientation=0):
-        self.__loadFile__(filepath)
-        return self.__cachedimage__.frameofreference.size[2-orientation]
+        if self.__loadFile__(filepath):
+            return self.__cachedimage__.frameofreference.size[2-orientation]
+        else: return 0
 
 class ImageDataProvider(BaseDataProvider):
     def __init__(self):
         super().__init__()
 
     def __fileLoader__(self, filepath):
+        common_sizes = [(256,256,256),
+                        (256,256, 1),
+                        (40,40, 1),
+                        (515,513,515),
+                        ()]
         if os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.pickle':
             return rttypes.MaskableVolume.fromPickle(filepath)
-        elif (os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.raw'):
-            try:
-                return rttypes.MaskableVolume.fromBinary(filepath, (513,513,513))
-            except:
-                try:
-                    return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 256))
-                except:
-                    return rttypes.MaskableVolume.fromBinary(filepath, (256, 256, 1))
+        if os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.mat':
+            return rttypes.MaskableVolume.fromMatlab(filepath)
         elif os.path.isdir(filepath):
             return rttypes.MaskableVolume.fromDir(filepath, recursive=True)
+        elif (os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.raw'):
+            for size in common_sizes:
+                try: return rttypes.MaskableVolume.fromBinary(filepath, size)
+                except: pass
+        sys.stdout.write('image size: {!s} bytes did not match any common_sizes\n'.format(os.path.getsize(filepath)))
+        return None # failed to open
+
+
 
 class MaskDataProvider(BaseDataProvider):
     def __init__(self):
