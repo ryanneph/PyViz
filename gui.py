@@ -282,7 +282,7 @@ def getImageFiles(root, recursive=True):
                 #      except:
                 #          raise
                 #          pass
-            elif (os.path.splitext(f)[1].lower() in ['.raw', '.bin']):
+            elif (os.path.splitext(f)[1].lower() in ['.raw', '.bin', '']):
                 image_path_list.append(os.path.join(head, f).replace(root.rstrip('/')+'/', './'))
             elif (os.path.splitext(f)[1].lower() == '.dcm'):
                 image_path_list.append(head.replace(root.rstrip('/')+'/', './'))

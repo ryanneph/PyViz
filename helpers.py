@@ -163,18 +163,21 @@ class ImageDataProvider(BaseDataProvider):
         super().__init__()
 
     def __fileLoader__(self, filepath):
-        common_sizes = [(256,256,256),
-                        (256,256, 1),
-                        (40,40, 1),
-                        (515,513,515),
-                        ()]
+        common_sizes = [(256,256,256), # iso vol
+                        (40,40, 1),    # fmap
+                        (140,110,65),  # calc_bbox
+                        (140,100,134), # calc_box (body contour)
+                        (502,502,502), # full_max_bev_size
+                        (248,248,248), # max_bev_size
+                        (210,155,210)  # pillar_grid_test
+                        ]
         if os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.pickle':
             return rttypes.MaskableVolume.fromPickle(filepath)
         if os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.mat':
             return rttypes.MaskableVolume.fromMatlab(filepath)
         elif os.path.isdir(filepath):
             return rttypes.MaskableVolume.fromDir(filepath, recursive=True)
-        elif (os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == '.raw'):
+        elif (os.path.isfile(filepath)):
             for size in common_sizes:
                 try: return rttypes.MaskableVolume.fromBinary(filepath, size)
                 except: pass

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
+ <author>Ryan Neph</author>
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
   <property name="geometry">
@@ -366,6 +367,22 @@
             </sizepolicy>
            </property>
           </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLineEdit" name="txt_nx"/>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="txt_ny"/>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="txt_nz"/>
+           </item>
+          </layout>
          </item>
         </layout>
        </widget>
