@@ -2,9 +2,12 @@ import sys
 import os
 from os.path import join, exists
 import re
-import numpy as np
+import struct
 
-from pymedimage.rttypes import MaskableVolume, ROI
+import numpy as np
+from scipy.io import loadmat, savemat, whosmat
+import h5py
+
 import matplotlib as mpl
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import (
@@ -50,14 +53,13 @@ class FigureDefinition_Summary(baseFigureDefinition):
 
     def Build(self):
         fig = Figure()
-        self.ax_ct = fig.add_axes([0.0,0.0,1.0, 1.0])
+        self.ax_ct = fig.add_axes([0.0,0.0,1.0,1.0])
 
         for ax in fig.get_axes():
             ax.set_axis_off()
 
         # setup imagedataproviders
         self.ctprovider = ImageDataProvider()
-        self.maskprovider = MaskDataProvider()
         self.featureprovider = ImageDataProvider()
 
         # must call last and pass figure instance
@@ -118,7 +120,6 @@ class FigureDefinition_Summary(baseFigureDefinition):
     def sliceCount(self, filepath, orientation=0):
         return self.ctprovider.getSliceCount(filepath, orientation)
 
-from pymedimage import rttypes as rttypes
 class BaseDataProvider:
     __metaclass__ = ABCMeta
     def __init__(self):
@@ -126,7 +127,7 @@ class BaseDataProvider:
         self.__cachedimagepath__ = None
 
     def __checkCached__(self, filepath):
-        if (self.__cachedimage__ and filepath == self.__cachedimagepath__):
+        if (self.__cachedimage__ is not None and filepath == self.__cachedimagepath__):
             return True
         else: return False
 
@@ -134,89 +135,168 @@ class BaseDataProvider:
     def __fileLoader__(self, filepath):
         return
 
+    def load(self, filepath, size=None):
+        if (self.__loadFile__(filepath, size)):
+            return self.__cachedimage__
+        else: return None
+
     def __loadFile__(self, filepath, size=None):
-        status = False
-        if filepath:
-            status = True
-            if not self.__checkCached__(filepath):
-                status = False
-                # [re]load data volume from file
-                if not os.path.exists(filepath):
-                    raise FileNotFoundError
-                del self.__cachedimage__
-                self.__cachedimage__ = self.__fileLoader__(filepath, size)
-                if self.__cachedimage__:
-                    status = True
-                    self.__cachedimagepath__ = filepath
+        try:
+            status = False
+            if filepath:
+                status = True
+                if not self.__checkCached__(filepath):
+                    status = False
+                    # [re]load data volume from file
+                    if not os.path.exists(filepath):
+                        raise FileNotFoundError
+                    del self.__cachedimage__
+                    self.__cachedimage__ = self.__fileLoader__(filepath, size)
+                    if self.__cachedimage__ is not None:
+                        status = True
+                        self.__cachedimagepath__ = filepath
+        except Exception as e:
+            print(e)
+            status = False
         return status
 
     def getImageSlice(self, filepath, slicenum, orientation=0, size=None):
-        if self.__loadFile__(filepath, size=size):
-            if self.__cachedimage__:
-                slice = self.__cachedimage__.getSlice(slicenum, orientation)
-                if orientation == 2:
-                    slice = slice.transpose()
-                return slice
-        return None
+        try:
+            if self.__loadFile__(filepath, size=size):
+                if self.__cachedimage__ is not None:
+                    if orientation==0:
+                        slice = self.__cachedimage__[slicenum, :, :]
+                    elif orientation==1:
+                        slice = self.__cachedimage__[:, slicenum, :]
+                    else:
+                        slice = self.__cachedimage__[:, :, slicenum]
+                    return slice
+        except Exception as e:
+            print(e)
 
     def getSliceCount(self, filepath, orientation=0, size=None):
         if self.__loadFile__(filepath, size=size):
-            return self.__cachedimage__.frameofreference.size[2-orientation]
+            return self.__cachedimage__.shape[orientation]
         else: return 0
 
 class ImageDataProvider(BaseDataProvider):
     def __init__(self):
         super().__init__()
+        self.valid_exts = set()
+        self.loaders = []
+        self._addLoader(self._loadFromMat, ['.mat'])
+        self._addLoader(self._loadFromLegacyDoseMat, ['.mat'])
+        self._addLoader(self._loadFromH5, ['.h5', '.hdf5', '.dose', '.fmap'])
+        self._addLoader(self._loadFromDicom, ['', '.dcm', '.dicom'])
+        self._addLoader(self._loadFromBinWithSize, ['', '.bin', '.raw'])
+        self._addLoader(self._loadFromCTIBin, ['.cti', '.ctislice', '.seg'])
+        self._addLoader(self._loadFromBin, ['', '.bin', '.raw'])
+
+        self._cached_size = None
+
+    def _addLoader(self, callable, valid_exts=[]):
+        self.loaders.append({"callable": callable, "valid_exts": [str(x).lower() for x in valid_exts]})
+        for ext in valid_exts:
+            self.valid_exts.add(ext)
+
+    def getSize(self):
+        return self._cachedsize
+
+    def getValidExtensions(self):
+        return list(self.valid_exts)
+
+    def resetCache(self):
+        self.__cachedimage__ = None
+        self.__cachedimagepath__ = None
+        self._cachedsize = None
+
+    def _loadFromBinWithSize(self, filepath, *args, **kwargs):
+        with open(filepath, 'rb') as fd:
+            sizebuf = fd.read(struct.calcsize('I'*3))
+            databuf = fd.read()
+        size = np.array(struct.unpack('I'*3, sizebuf))
+        arr = np.array(struct.unpack('f'*np.product(size), databuf)).reshape(size[::-1])
+        #  arr = np.transpose(arr, [0, 2, 1])
+        return arr
+
+    def _loadFromBin(self, filepath, size, *args, **kwargs):
+        if size is None:
+            raise ValueError("size must be 3-tuple")
+        with open(filepath, 'rb') as fd:
+            buf = fd.read()
+        except_msgs = []
+        for type in ['f', 'd']:
+            try:
+                arr = np.array(struct.unpack(type*np.product(size), buf)).reshape(size[::-1])
+                break
+            except Exception as e:
+                except_msgs.append(str(e))
+                continue
+        if arr is None:
+            raise Exception("\n".join(except_msgs))
+        return arr
+
+    def _loadFromCTIBin(self, filepath, size, *args, **kwargs):
+        if size is None:
+            raise ValueError("size must be 3-tuple")
+        with open(filepath, 'rb') as fd:
+            buf = fd.read()
+        arr = np.array(struct.unpack('h'*np.product(size), buf)).reshape(size[::-1])
+        arr = np.transpose(arr, [0, 2, 1])
+        return arr
+
+    def _loadFromH5(self, filepath, *args, **kwargs):
+        with h5py.File(filepath, 'r') as fd:
+            excepts = []
+            for k in ["data", "volume", "arraydata"]:
+                try:
+                    return fd[k][:]
+                except Exception as e:
+                    excepts.append(e)
+                    continue
+            raise Exception('\n'.join(excepts))
+
+    def _loadFromMat(self, filepath, *args, **kwargs):
+        # Load from matlab (matrad "cube")
+        d = loadmat(filepath)
+        return d['ct']['cube'][0,0][0,0].transpose((2,0,1))
+
+    def _loadFromLegacyDoseMat(self, filepath, *args, **kwargs):
+        import sparse2dense.recon
+        vol = sparse2dense.recon.reconstruct_from_dosecalc_mat(filepath)
+        return vol
+
+    def _loadFromDicom(self, filepath, *args, **kwargs):
+        if os.path.splitext(filepath)[1] == '':
+            if not os.path.isdir(filepath):
+                raise TypeError('file must be a directory containing dicom files or a single dicom file')
+            import pymedimage.rttypes as rttypes
+            return rttypes.BaseVolume.fromDir(filepath).data
+        else:
+            import pydicom
+            ds = pydicom.read_file(filepath)
+            arr = ds.pixel_array
+            return arr.reshape((1, *arr.shape))
+        return None
+
     def __fileLoader__(self, filepath, size=None):
-        common_sizes = [
-            (44,64,44), (85, 176, 201), (300, 300, 300), (350, 350, 350), (400, 400, 298),
-            #  (48,60,48), (51,63,51), (83,505,505), (181,253, 295),(181, 253, 295),
-            #  (88,88,88), (176,176,176), (116,228,116), (57,41,57), (113,81,112), (112, 200, 112), (800,800,800), (146,417,449), (150,115,125), (240, 677, 677),
-            #  (635,635,635), (600,600,404), (615,615,615), (401,101,399), (315,315,315),
-            #  (147,280,147), (147,147,147), (327,327,327),
-            #  (161,321,159), (176,336,176), (342,302,302), (300,300,156), (173,261,261), (187,144,156),
-            #  (182,422,422), (88,168,88), (81,161,80), (621,621,600), (323,323,323),
-            #  (480,480,250), (240,240,125), (150,115,125), (128,171,184), (450,450,450), (350,350,350), (700, 700, 700), (500, 500, 500), (600,600,600),
-            #    (166,171,171), (136,171,184), (187,171,171), (163,171,171), (187,171,184), (187,171,184),
-            #  (126,157,169), (134,261,281), (166,469,469),
-            #  (267,267,267),
-            #  (342,302,332),
-            #  (342,482,482),
-            #  (450,450,300),
-            #  (320,334,320),
-            #  (220,171,220),
-            #  (334, 167, 200),
-            #  (173, 112, 134),
-            #  (176,336,176),
-            #  (161,321,159),
-            #  (88,168,88),
-            #  (10,10, 1), (40,40,1), (32,32,1), (200, 200, 1), (20, 20, 1),
-            #  (24,8, 1),
-            (24,10, 1),
-            (24,1,1),
-            (32,1,1),
-        ]
-        try:
-            return rttypes.MaskableVolume.load(filepath)
-        except Exception as e:
-            print(e)
-            if size is not None:
-                common_sizes.insert(0, size)
-            for size in common_sizes:
-                try: return rttypes.MaskableVolume.fromBinary(filepath, size)
-                except Exception as e: print(e)
-        sys.stdout.write('image size: {!s} bytes did not match any common_sizes\n'.format(os.path.getsize(filepath)))
+        excepts = []
+        attempts = 0
+        while attempts < len(self.loaders):
+            attempts += 1
+            try:
+                loader = self.loaders[attempts-1]
+                if os.path.splitext(filepath)[1].lower() not in loader['valid_exts']:
+                    raise ValueError("file doesn't match valid valid extensions: [{!s}]".format(', '.join(loader['valid_exts'])))
+                vol = loader['callable'](filepath, size)
+                if vol is not None:
+                    self._cachedsize = vol.shape[::-1]
+                    return vol
+            except Exception as e:
+                excepts.append(e)
+                self.resetCache()
+
+        print("Failed to load image with errors:")
+        for e in excepts:
+            print(e, '\n')
         return None # failed to open
-
-
-
-class MaskDataProvider(BaseDataProvider):
-    def __init__(self):
-        super().__init__()
-
-    def __fileLoader__(self, filepath):
-        if isFileByExt(filepath, '.h5'):
-            return rttypes.ROI.fromHDF5(filepath).makeDenseMask()
-        elif isFileByExt(filepath, '.pickle'):
-            return rttypes.ROI.fromPickle(filepath).makeDenseMask()
-        else: return None

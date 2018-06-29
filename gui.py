@@ -1,9 +1,12 @@
 #!/usr/bin/env python
+import sys
+import os
 
 from PyQt5.uic import loadUiType
 # from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QMessageBox, QErrorMessage, QFileDialog
 import matplotlib
+import matplotlib.pyplot as plt
 matplotlib.use('Qt5Agg')
 
 import os, sys
@@ -45,7 +48,7 @@ class Main(QMainWindow, Ui_MainWindow):
 
         ########### Setup Signal/slot connections #################
         self.combo_cmap.activated.connect(self.__slot_change_cmap__)
-        self.combo_orientslice.activated.connect(self.__slot_simple_update_image__)
+        self.combo_orientslice.activated.connect(self.__slot_orient_changed)
         self.combo_yaxis.activated.connect(self.__slot_simple_update_image__)
         # self.combo_ModeSelect.currentIndexChanged['QString'].connect(self.__slot_changefig_figselect__)
         self.txtPath.editingFinished.connect(self.__slot_txtPath_editingFinished__)
@@ -55,13 +58,27 @@ class Main(QMainWindow, Ui_MainWindow):
         self.btn_NextSlice.clicked.connect(self.__slot_NextSlice_clicked__)
         self.btn_Open.clicked.connect(self.__openFileDialog__)
         self.listImages.currentTextChanged.connect(self.__slot_listGeneric_currentTextChanged__)
-        self.listMasks.currentTextChanged.connect(self.__slot_listMasks_currentTextChanged__)
+        #  self.listMasks.currentTextChanged.connect(self.__slot_listMasks_currentTextChanged__)
+        self.btn_Refresh.clicked.connect(self.__slot_refreshImage)
         ###########################################################
+
+        # get list of cmap names
+        self.combo_cmap.addItems(list(plt.cm.datad)+list(plt.cm.cmaps_listed))
 
         # self.__refresh_feature_names__(self.txtPath.text())
         self.figdef = pvh.FigureDefinition_Summary()
         self.figdef.Build()
         self.__updateCanvas__(self.figdef)
+
+    def __slot_orient_changed(self, idx):
+        orientation = self.combo_orientslice.currentText()
+        if (orientation.lower() == 'coronal'):
+            self.combo_yaxis.setCurrentText('Lower')
+        elif (orientation.lower() == 'sagittal'):
+            self.combo_yaxis.setCurrentText('Lower')
+        else:
+            self.combo_yaxis.setCurrentText('Upper')
+        self.__slot_simple_update_image__(idx)
 
     def __slot_change_cmap__(self, idx):
         self.cmap_manual_sel = True
@@ -92,29 +109,38 @@ class Main(QMainWindow, Ui_MainWindow):
             #self.toolbar.close()
             #self.canvas.draw()
 
-    # def __get_CurrentFigBuilder__(self):
-    #     return self.dict_key2figBuilder[self.dict_name2key[self.combo_ModeSelect.currentText()]]
-
-    # def __slot_changefig_figselect__(self, figname):
-    #     figname = str(figname)
-    #     rootPath = str(self.lastValidPath)
-    #     sliceNum = int(self.num_Slice.value())
-    #     self.__changefig__(figname, rootPath, sliceNum)
 
     def setSliceNum(self, n):
+        self.num_Slice.valueChanged.disconnect(self.__slot_changefig_sliceNum__)
         self.num_Slice.setValue(int(n))
+        self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
+
+    def setSliceMax(self, n):
+        self.num_Slice.valueChanged.disconnect(self.__slot_changefig_sliceNum__)
+        self.num_Slice.setMaximum(int(n))
+        self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
+
+    def setSliceMin(self, n):
+        self.num_Slice.valueChanged.disconnect(self.__slot_changefig_sliceNum__)
+        self.num_Slice.setMinimum(int(n))
+        self.num_Slice.valueChanged.connect(self.__slot_changefig_sliceNum__)
+
 
     def getSliceNum(self):
         return int(self.num_Slice.value())
+
+    def __slot_refreshImage(self):
+        self.figdef.ctprovider.resetCache()
+        self.__updateImage__()
 
     def __slot_listGeneric_currentTextChanged__(self, currentText):
         if currentText:
             # self.setSliceNum(0)
             self.__updateImage__()
 
-    def __slot_listMasks_currentTextChanged__(self, currentText):
-        if currentText:
-            self.__updateImage__()
+    #  def __slot_listMasks_currentTextChanged__(self, currentText):
+    #      if currentText:
+    #          self.__updateImage__()
 
     def __updateImage__(self):
         # get CT filepath
@@ -126,65 +152,51 @@ class Main(QMainWindow, Ui_MainWindow):
             self.lastValidFile = fullpath
         else: fullpath = None
 
-        # get mask filepath
-        if self.listMasks.currentItem():
-            currentText = self.listMasks.currentItem().text()
-            basepath = str(self.txtPath.text())
-            relpath = currentText.lstrip('./')
-            fullpath_mask = os.path.join(basepath, relpath)
-        else: fullpath_mask = None
-
         slicenum = self.getSliceNum()
 
         if fullpath:
             # cmap selection
             if not self.cmap_manual_sel:
-                if 'level2_clusters' in fullpath.lower():
-                    # colormap that matches aapm abstract heatmap
-                    cmap = ListedColormap(np.array([[255,255,255],
-                                                    [255,255,255],
-                                                    [255,255,255],
-                                                    [0, 128, 0],
-                                                    [255,0,0],
-                                                    [50,202,202],
-                                                    [191,0,191],
-                                                    [191,191,0],
-                                                    [234,116,0]])/255, 'clusters')
-                elif 'level1_clusters' in fullpath.lower():
-                    cmap='Paired'
-                elif 'feature=' in fullpath.lower() or os.path.splitext(fullpath)[1] == '.raw':
-                    cmap='viridis'
-                else:
-                    cmap='gray'
-                try:
-                    self.combo_cmap.setCurrentIndex(self.combo_cmap.findText(cmap))
+                cmap='gray'
+                try: self.combo_cmap.setCurrentIndex(self.combo_cmap.findText(cmap))
                 except: pass
             else:
                 cmap = self.combo_cmap.currentText()
 
-            nx, ny, nz = self.txt_nx.text(), self.txt_ny.text(), self.txt_nz.text()
-            try:
-                size = (int(nx), int(ny), int(nz))
-            except: size = None
+            try: manual_size = (int(self.txt_nx.text()), int(self.txt_ny.text()), int(self.txt_nz.text()))
+            except: manual_size = None
 
             orientation = self.combo_orientslice.currentText()
-            if (orientation.lower() == 'coronal'): orientation = 1
-            elif (orientation.lower() == 'sagittal'): orientation = 2
-            else: orientation = 0 # axial
+            if (orientation.lower() == 'coronal'):
+                orientation = 1
+            elif (orientation.lower() == 'sagittal'):
+                orientation = 2
+            else:
+                orientation = 0 # axial
+
             yaxis_flip = self.combo_yaxis.currentText()
             if (yaxis_flip.lower() == 'lower'): yaxis_flip = True
-            else: yaxis_flip = False # axial
-            realslicenum = self.figdef.ctprovider.getSliceCount(fullpath, orientation, size)
-            if realslicenum <= slicenum:
-                slicenum = realslicenum-1
-                self.setSliceNum(realslicenum-1)
-            ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation, size=size)
+            else: yaxis_flip = False
+
+            realslicecount = self.figdef.ctprovider.getSliceCount(fullpath, orientation, manual_size)
+            if realslicecount <= slicenum:
+                slicenum = realslicecount-1
+                self.setSliceNum(slicenum)
+
+            self.setSliceMax(realslicecount-1)
+            self.setSliceMin(0)
+
+            realsize = self.figdef.ctprovider.getSize()
+            if realsize is None:
+                realsize = ['', '', '']
+            self.txt_nx.setText(str(realsize[0]))
+            self.txt_ny.setText(str(realsize[1]))
+            self.txt_nz.setText(str(realsize[2]))
+
+            ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation, size=manual_size)
             if ctdata is not None:
                 self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip)
-                if fullpath_mask:
-                    maskdata = self.figdef.maskprovider.getImageSlice(fullpath_mask, slicenum, orientation)
-                    self.figdef.drawContour(self.figdef.ax_ct, maskdata)
-                else: self.figdef.clearContour(self.figdef.ax_ct)
+            else: self.figdef.clearContour(self.figdef.ax_ct)
 
 
     def __slot_txtPath_editingFinished__(self):
@@ -198,19 +210,15 @@ class Main(QMainWindow, Ui_MainWindow):
         """recursively find all BaseVolume objects contained in pickle files under root"""
         if (not root == self.lastValidPath):
             if (os.path.exists(root)):
-                # self.__refresh_feature_names__(filePath)
                 self.statusBar.showMessage('Rebuilding Data List, wait...')
-                # self.__changefig__(figname, filePath, sliceNum)
-                # self.num_Slice.setMinimum(0)
-                # self.num_Slice.setMaximum(self.dict_key2figBuilder[self.dict_name2key[figname]].slicecount-1)
                 self.lastValidPath = root
-                img_path_list, mask_path_list, feature_path_list = getImageFiles(root, recursive=True)
+                img_path_list, mask_path_list, feature_path_list = self.getImageFiles(root, recursive=True)
                 self.listImages.clear()
                 self.listImages.addItems(sorted(img_path_list))
-                self.listMasks.clear()
-                self.listMasks.addItems(mask_path_list)
-                self.listFeatures.clear()
-                self.listFeatures.addItems(feature_path_list)
+                #  self.listMasks.clear()
+                #  self.listMasks.addItems(mask_path_list)
+                #  self.listFeatures.clear()
+                #  self.listFeatures.addItems(feature_path_list)
                 self.statusBar.clearMessage()
                 return True
             else:
@@ -221,25 +229,10 @@ class Main(QMainWindow, Ui_MainWindow):
     def __slot_changefig_sliceNum__(self, sliceNum):
         self.__updateImage__()
 
-    # def __changefig__(self, figname, filePath, sliceNum, feature_filename=None):
-    #     self.statusBar.showMessage('Loading, wait...')
-    #     figkey = self.dict_name2key[figname]
-    #     args = {'filePath': filePath,
-    #             'sliceNum': sliceNum,
-    #             'feature_filename': feature_filename}
-    #     fig = self.dict_key2figBuilder[figkey].get_figure(args)
-    #     if (fig == False):
-    #         self.statusBar.showMessage('Invalid Path Supplied, Try again.')
-    #         return False
-    #     else:
-    #         self.__drawfig__(fig)
-    #         self.statusBar.clearMessage()
-    #         return True
-
     def __slot_PrevSlice_clicked__(self, checkedbool):
         currentSliceNum = int(self.num_Slice.value())
         if (currentSliceNum > 0 and currentSliceNum < self.figdef.sliceCount(self.lastValidFile)):
-            self.num_Slice.setValue(currentSliceNum-1)
+            self.setSliceNum(currentSliceNum-1)
             self.__updateImage__()
             return True
         else:
@@ -248,7 +241,7 @@ class Main(QMainWindow, Ui_MainWindow):
     def __slot_NextSlice_clicked__(self, checkedbool):
         currentSliceNum = int(self.num_Slice.value())
         if (currentSliceNum >= 0 and currentSliceNum < self.figdef.sliceCount(self.lastValidFile)-1):
-            self.num_Slice.setValue(currentSliceNum+1)
+            self.setSliceNum(currentSliceNum+1)
             self.__updateImage__()
             return True
         else:
@@ -263,45 +256,27 @@ class Main(QMainWindow, Ui_MainWindow):
             self.txtPath.setText(foldername)
             self.__slot_txtPath_editingFinished__()
 
-def getImageFiles(root, recursive=True):
-    valid_exts = ['.pickle', '.mat', '.h5', '.hdf5', '.nii', '.nii.gz', '.raw', '.bin', '']
-    image_path_list = []
-    mask_path_list = []
-    feature_path_list = []
-    for head, dirs, files in os.walk(root):
-        for f in files:
-            if isFileByExt(f, valid_exts):
-                fullfilepath = os.path.join(head, f).replace(root.rstrip('/')+'/', './')
-                if ('roi' in f):
-                    mask_path_list.append(fullfilepath)
-                else:
+    def getImageFiles(self, root, recursive=True, ext=None):
+        ignore_dirs = ['.git']
+        ext = self.figdef.ctprovider.getValidExtensions()
+        image_path_list = []
+        mask_path_list = []
+        feature_path_list = []
+        for head, dirs, files in os.walk(root, followlinks=True):
+            if os.path.basename(head) in ignore_dirs:
+                del dirs[:]; del files[:]; continue
+            for f in files:
+                if os.path.splitext(f)[1].lower() in ext:
+                    fullfilepath = os.path.join(head, f).replace(root.rstrip('/')+'/', './')
                     image_path_list.append(fullfilepath)
-                #  with open(fullfilepath, mode='rb') as pf:
-                #      try:
-                #          obj = pickle.load(pf)
-                #          cls = obj.__class__.__name__
-                #          fullfilepath = fullfilepath.replace(root.rstrip('/')+'/', './')
-                #          if ('basevolumepickle' in cls.lower() or
-                #              'maskablevolumepickle' in cls.lower()):
-                #              image_path_list.append(fullfilepath)
-                #              # if not obj.feature_label:
-                #              #     image_path_list.append(fullfilepath)
-                #              # else: feature_path_list.append(fullfilepath)
-                #          elif ('roi' in cls.lower()):
-                #              mask_path_list.append(fullfilepath)
-                #          # else: print('{!s} is pickle but classname={!s}'.format(fullfilepath, cls))
-                #          del obj
-                #      except:
-                #          raise
-                #          pass
-            #  elif (os.path.splitext(f)[1].lower() in ['.raw', '.bin', '']):
-            #      image_path_list.append(os.path.join(head, f).replace(root.rstrip('/')+'/', './'))
-            elif isFileByExt(f, '.dcm'):
-                image_path_list.append(head.replace(root.rstrip('/')+'/', './'))
-                break
-        if not recursive:
-            del dirs[:]
-    return (image_path_list, mask_path_list, feature_path_list)
+            for d in dirs:
+                for _f in os.listdir(os.path.join(head, d)):
+                    if os.path.splitext(_f)[1] in ['.dcm', '.dicom']:
+                        image_path_list.append(os.path.join(head, d).replace(root.rstrip('/')+'/', './'))
+                        break
+            if not recursive:
+                del dirs[:]
+        return (image_path_list, mask_path_list, feature_path_list)
 
 
 # Start GUI window
@@ -311,7 +286,8 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
     main = Main()
-    path = '/home/ryan/projects/BiCEP-Dosecalc/data/temp'
+    path = os.getcwd()
     main.txtPath.setText(path)
+    main.txtPath.editingFinished.emit()
     main.show()
     sys.exit(app.exec_())
