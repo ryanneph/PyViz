@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from PyQt5.uic import loadUiType
 # from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QMessageBox, QErrorMessage, QFileDialog
@@ -15,7 +17,7 @@ from matplotlib.backends.backend_qt5agg import (
 from matplotlib.colors import ListedColormap
 
 import helpers as pvh
-from constants import *
+from helpers import isFileByExt
 
 # Load QT UI as main window
 # change cwd to that which contains the entry module (this file/run script)
@@ -159,6 +161,12 @@ class Main(QMainWindow, Ui_MainWindow):
                 except: pass
             else:
                 cmap = self.combo_cmap.currentText()
+
+            nx, ny, nz = self.txt_nx.text(), self.txt_ny.text(), self.txt_nz.text()
+            try:
+                size = (int(nx), int(ny), int(nz))
+            except: size = None
+
             orientation = self.combo_orientslice.currentText()
             if (orientation.lower() == 'coronal'): orientation = 1
             elif (orientation.lower() == 'sagittal'): orientation = 2
@@ -166,11 +174,11 @@ class Main(QMainWindow, Ui_MainWindow):
             yaxis_flip = self.combo_yaxis.currentText()
             if (yaxis_flip.lower() == 'lower'): yaxis_flip = True
             else: yaxis_flip = False # axial
-            realslicenum = self.figdef.ctprovider.getSliceCount(fullpath, orientation)
+            realslicenum = self.figdef.ctprovider.getSliceCount(fullpath, orientation, size)
             if realslicenum <= slicenum:
                 slicenum = realslicenum-1
                 self.setSliceNum(realslicenum-1)
-            ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation)
+            ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation, size=size)
             if ctdata is not None:
                 self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip)
                 if fullpath_mask:
@@ -256,14 +264,18 @@ class Main(QMainWindow, Ui_MainWindow):
             self.__slot_txtPath_editingFinished__()
 
 def getImageFiles(root, recursive=True):
+    valid_exts = ['.pickle', '.mat', '.h5', '.hdf5', '.nii', '.nii.gz', '.raw', '.bin', '']
     image_path_list = []
     mask_path_list = []
     feature_path_list = []
     for head, dirs, files in os.walk(root):
         for f in files:
-            if (os.path.splitext(f)[1].lower() == '.pickle'):
+            if isFileByExt(f, valid_exts):
                 fullfilepath = os.path.join(head, f).replace(root.rstrip('/')+'/', './')
-                image_path_list.append(fullfilepath)
+                if ('roi' in f):
+                    mask_path_list.append(fullfilepath)
+                else:
+                    image_path_list.append(fullfilepath)
                 #  with open(fullfilepath, mode='rb') as pf:
                 #      try:
                 #          obj = pickle.load(pf)
@@ -282,9 +294,9 @@ def getImageFiles(root, recursive=True):
                 #      except:
                 #          raise
                 #          pass
-            elif (os.path.splitext(f)[1].lower() in ['.raw', '.bin', '']):
-                image_path_list.append(os.path.join(head, f).replace(root.rstrip('/')+'/', './'))
-            elif (os.path.splitext(f)[1].lower() == '.dcm'):
+            #  elif (os.path.splitext(f)[1].lower() in ['.raw', '.bin', '']):
+            #      image_path_list.append(os.path.join(head, f).replace(root.rstrip('/')+'/', './'))
+            elif isFileByExt(f, '.dcm'):
                 image_path_list.append(head.replace(root.rstrip('/')+'/', './'))
                 break
         if not recursive:
@@ -299,7 +311,7 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
     main = Main()
-    path = '/home/ryan/projects/rs4pi/dosecalc_gpu/data/temp'
+    path = '/home/ryan/projects/BiCEP-Dosecalc/data/temp'
     main.txtPath.setText(path)
     main.show()
     sys.exit(app.exec_())
