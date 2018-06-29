@@ -50,6 +50,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
         super().__init__()
         self.ax_ct = None
         self.origin = None
+        self.autoscale = True
 
     def Build(self):
         fig = Figure()
@@ -82,6 +83,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
 
         origin = 'lower' if flipy else 'upper'
         if origin != self.origin:
+            self.origin = origin
             self.clearAxes()
 
         # if nothing is drawn yet, add axes instance
@@ -98,7 +100,8 @@ class FigureDefinition_Summary(baseFigureDefinition):
             ax_img.set_array(data)
             # ax.relim()  # update axes limits
             ax.autoscale_view()
-            ax_img.autoscale()  # scale colormap to current data (vmin/vmax)
+            if self.autoscale:
+                ax_img.autoscale()  # scale colormap to current data (vmin/vmax)
         self.canvas.draw()
 
     def clearContour(self, ax):

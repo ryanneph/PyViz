@@ -169,62 +169,6 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QComboBox" name="combo_cmap">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>80</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maxCount">
-          <number>10</number>
-         </property>
-         <item>
-          <property name="text">
-           <string>gray</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>viridis</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Paired</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <!-- <item row="1" column="0"> -->
-       <!--  <widget class="QSlider" name="horizontalSlider"> -->
-       <!--   <property name="enabled"> -->
-       <!--    <bool>false</bool> -->
-       <!--   </property> -->
-       <!--   <property name="sizePolicy"> -->
-       <!--    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed"> -->
-       <!--     <horstretch>0</horstretch> -->
-       <!--     <verstretch>0</verstretch> -->
-       <!--    </sizepolicy> -->
-       <!--   </property> -->
-       <!--   <property name="minimumSize"> -->
-       <!--    <size> -->
-       <!--     <width>100</width> -->
-       <!--     <height>0</height> -->
-       <!--    </size> -->
-       <!--   </property> -->
-       <!--   <property name="orientation"> -->
-       <!--    <enum>Qt::Horizontal</enum> -->
-       <!--   </property> -->
-       <!--  </widget> -->
-       <!-- </item> -->
        <item row="0" column="10" rowspan="3">
         <widget class="QPushButton" name="btn_Refresh">
          <property name="enabled">
@@ -241,7 +185,21 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="2">
+       <item row="1" column="4">
+        <widget class="QComboBox" name="combo_yaxis">
+         <item>
+          <property name="text">
+           <string>Upper</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Lower</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="3">
         <widget class="QComboBox" name="combo_orientslice">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -287,18 +245,48 @@
          </item>
         </widget>
        </item>
-       <item row="1" column="4">
-        <widget class="QComboBox" name="combo_yaxis">
+       <item row="1" column="2">
+        <widget class="QComboBox" name="combo_cmap">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maxCount">
+          <number>10</number>
+         </property>
          <item>
           <property name="text">
-           <string>Upper</string>
+           <string>gray</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Lower</string>
+           <string>viridis</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>Paired</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="1" alignment="Qt::AlignRight">
+        <widget class="QCheckBox" name="chk_autoscale">
+         <property name="text">
+          <string>Autoscale</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
       </layout>
@@ -342,32 +330,6 @@
            </property>
           </widget>
          </item>
-         <!-- <item> -->
-         <!--  <widget class="QListWidget" name="listMasks"> -->
-         <!--   <property name="sizePolicy"> -->
-         <!--    <sizepolicy hsizetype="Expanding" vsizetype="Maximum"> -->
-         <!--     <horstretch>0</horstretch> -->
-         <!--     <verstretch>0</verstretch> -->
-         <!--    </sizepolicy> -->
-         <!--   </property> -->
-         <!--   <property name="maximumSize"> -->
-         <!--    <size> -->
-         <!--     <width>16777215</width> -->
-         <!--     <height>100</height> -->
-         <!--    </size> -->
-         <!--   </property> -->
-         <!--  </widget> -->
-         <!-- </item> -->
-         <!-- <item> -->
-         <!--  <widget class="QListWidget" name="listFeatures"> -->
-         <!--   <property name="sizePolicy"> -->
-         <!--    <sizepolicy hsizetype="Expanding" vsizetype="Ignored"> -->
-         <!--     <horstretch>0</horstretch> -->
-         <!--     <verstretch>0</verstretch> -->
-         <!--    </sizepolicy> -->
-         <!--   </property> -->
-         <!--  </widget> -->
-         <!-- </item> -->
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_2">
            <property name="bottomMargin">

@@ -47,6 +47,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.cmap_manual_sel = False
 
         ########### Setup Signal/slot connections #################
+        self.chk_autoscale.stateChanged.connect(self.__slot_autoscale_changed)
         self.combo_cmap.activated.connect(self.__slot_change_cmap__)
         self.combo_orientslice.activated.connect(self.__slot_orient_changed)
         self.combo_yaxis.activated.connect(self.__slot_simple_update_image__)
@@ -69,6 +70,10 @@ class Main(QMainWindow, Ui_MainWindow):
         self.figdef = pvh.FigureDefinition_Summary()
         self.figdef.Build()
         self.__updateCanvas__(self.figdef)
+
+    def __slot_autoscale_changed(self, state):
+        self.figdef.autoscale = (state==2)
+        self.__updateImage__()
 
     def __slot_orient_changed(self, idx):
         orientation = self.combo_orientslice.currentText()
@@ -227,6 +232,7 @@ class Main(QMainWindow, Ui_MainWindow):
 
 
     def __slot_changefig_sliceNum__(self, sliceNum):
+        c = self.figdef.drawImage # matplotlib.Figure.Canvas
         self.__updateImage__()
 
     def __slot_PrevSlice_clicked__(self, checkedbool):
