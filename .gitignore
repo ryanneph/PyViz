@@ -1,3 +1,4 @@
 *.pyc
 *.swp
 pyViz.py
+*.egg-info

@@ -270,16 +270,13 @@ class ImageDataProvider(BaseDataProvider):
         return vol
 
     def _loadFromDicom(self, filepath, *args, **kwargs):
+        import pymedimage.rttypes as rttypes
         if os.path.splitext(filepath)[1] == '':
             if not os.path.isdir(filepath):
                 raise TypeError('file must be a directory containing dicom files or a single dicom file')
-            import pymedimage.rttypes as rttypes
             return rttypes.BaseVolume.fromDir(filepath).data
         else:
-            import pydicom
-            ds = pydicom.read_file(filepath)
-            arr = ds.pixel_array
-            return arr.reshape((1, *arr.shape))
+            return rttypes.BaseVolume.fromDicom(filepath).data
         return None
 
     def __fileLoader__(self, filepath, size=None):

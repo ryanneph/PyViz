@@ -2,8 +2,11 @@
 import sys
 import os
 
+FILE_DIR = os.path.abspath(os.path.dirname(__file__))
+
 from PyQt5.uic import loadUiType
 # from PyQt5.QtCore import pyqtSlot
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QErrorMessage, QFileDialog
 import matplotlib
 import matplotlib.pyplot as plt
@@ -19,6 +22,7 @@ from matplotlib.backends.backend_qt5agg import (
 )
 from matplotlib.colors import ListedColormap
 
+sys.path.insert(0, FILE_DIR)
 import helpers as pvh
 from helpers import isFileByExt
 
@@ -30,7 +34,7 @@ except:
     pass
 
 # compile the gui layout
-Ui_MainWindow, QMainWindow = loadUiType('window.ui')
+Ui_MainWindow, QMainWindow = loadUiType(os.path.join(FILE_DIR, 'window.ui'))
 
 # GUI window subclass def
 class Main(QMainWindow, Ui_MainWindow):
@@ -269,31 +273,31 @@ class Main(QMainWindow, Ui_MainWindow):
         mask_path_list = []
         feature_path_list = []
         for head, dirs, files in os.walk(root, followlinks=True):
-            if os.path.basename(head) in ignore_dirs:
-                del dirs[:]; del files[:]; continue
-            for f in files:
-                if os.path.splitext(f)[1].lower() in ext:
-                    fullfilepath = os.path.join(head, f).replace(root.rstrip('/')+'/', './')
-                    image_path_list.append(fullfilepath)
-            for d in dirs:
-                for _f in os.listdir(os.path.join(head, d)):
-                    if os.path.splitext(_f)[1] in ['.dcm', '.dicom']:
-                        image_path_list.append(os.path.join(head, d).replace(root.rstrip('/')+'/', './'))
-                        break
+            try:
+                if os.path.basename(head) in ignore_dirs:
+                    del dirs[:]; del files[:]; continue
+                for f in files:
+                    if os.path.splitext(f)[1].lower() in ext:
+                        fullfilepath = os.path.join(head, f).replace(root.rstrip('/')+'/', './')
+                        image_path_list.append(fullfilepath)
+                for d in dirs:
+                    for _f in os.listdir(os.path.join(head, d)):
+                        if os.path.splitext(_f)[1] in ['.dcm', '.dicom']:
+                            image_path_list.append(os.path.join(head, d).replace(root.rstrip('/')+'/', './'))
+                            break
+            except Exception as e:
+                print(e)
             if not recursive:
                 del dirs[:]
         return (image_path_list, mask_path_list, feature_path_list)
 
 
-# Start GUI window
-if __name__ == '__main__':
-    import sys
-    from PyQt5 import QtWidgets
-
-    app = QtWidgets.QApplication(sys.argv)
-    main = Main()
-    path = os.getcwd()
-    main.txtPath.setText(path)
-    main.txtPath.editingFinished.emit()
-    main.show()
-    sys.exit(app.exec_())
+#  # Start GUI window
+#  if __name__ == '__main__':
+#      app = QtWidgets.QApplication(sys.argv)
+#      main = Main()
+#      path = os.getcwd()
+#      main.txtPath.setText(path)
+#      main.txtPath.editingFinished.emit()
+#      main.show()
+#      sys.exit(app.exec_())
