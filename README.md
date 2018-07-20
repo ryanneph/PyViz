@@ -14,7 +14,7 @@ The functionality can be easily extended for other proprietary formats as well.
 ## Installing
 Open a terminal window and enter:
 ``` bash
-pip install git+git://github.com/ryanneph/PyViz.git#egg=PyViz
+pip install --process-dependency-links git+git://github.com/ryanneph/PyViz.git#egg=PyViz
 ```
 
 ## Development
@@ -22,7 +22,7 @@ Open a terminal window and enter:
 ``` bash
 git clone https://github.com/ryanneph/PyViz.git
 cd PyViz
-pip install -e .
+pip install -e --process-dependency-links .
 ```
 
 ## Running

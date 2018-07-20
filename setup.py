@@ -19,9 +19,6 @@ setup(name="PyViz",
           'h5py >=2.7.1',
           'pyqt5 >=5.9.2',
           'numpy >=1.14.2',
-
-          'sparse2dense',
-          'pymedimage',
           ],
       dependency_links=[
           'git+git://github.com/ryanneph/Sparse2Dense.git#egg=sparse2dense',
