@@ -12,7 +12,7 @@ setup(name="PyViz",
       entry_points={
           'gui_scripts': ['pyviz = pyviz.__main__:main'],
       },
-      package_data={'pyviz': ['pyviz/window.ui']},
+      package_data={'pyviz': ['window.ui']},
       install_requires=[
           'matplotlib>=0.1',
           'scipy >=1.0.1',
