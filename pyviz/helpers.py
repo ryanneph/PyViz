@@ -9,6 +9,7 @@ from scipy.io import loadmat, savemat, whosmat
 import h5py
 
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import (
         FigureCanvasQTAgg as FigureCanvas,
@@ -43,28 +44,43 @@ class baseFigureDefinition:
     def Build(self, fig):
         self.figure = fig
         self.canvas = FigureCanvas(self.figure)
+        self.canvas.draw()
         self.__initialized__ = True
 
 class FigureDefinition_Summary(baseFigureDefinition):
     def __init__(self):
         super().__init__()
         self.ax_ct = None
+        self.ax_colorbar = None
+        self.colorbar_enabled = True
         self.origin = None
         self.autoscale = True
 
     def Build(self):
         fig = Figure()
-        self.ax_ct = fig.add_axes([0.0,0.0,1.0,1.0])
+        if self.colorbar_enabled:
+            self.ax_ct = fig.add_axes([0.0,0.025,0.85,0.95])
+            self.ax_colorbar = fig.add_axes([0.85,0.025,0.06,0.95])
+        else:
+            self.ax_ct = fig.add_axes([0.0,0.0,1.0,1.0])
 
-        for ax in fig.get_axes():
-            ax.set_axis_off()
+        self.ax_ct.set_axis_off()
+        #  for ax in fig.get_axes():
+        #      ax.set_axis_off()
 
-        # setup imagedataproviders
-        self.ctprovider = ImageDataProvider()
-        self.featureprovider = ImageDataProvider()
+        if not self.__initialized__:
+            # setup imagedataproviders
+            self.ctprovider = ImageDataProvider()
+            self.featureprovider = ImageDataProvider()
 
         # must call last and pass figure instance
         super().Build(fig)
+
+    def rebuild(self):
+        self.ax_ct = None
+        self.ax_colorbar = None
+        plt.close(self.figure)
+        self.Build()
 
     def clearAxes(self, ax=None):
         if not ax:
@@ -77,9 +93,13 @@ class FigureDefinition_Summary(baseFigureDefinition):
             self.clearContour(ax)
         self.canvas.draw()
 
-    def drawImage(self, ax, data, cmap='gray', flipy=False):
+    def drawImage(self, ax, data, cmap='gray', flipy=False, colorbar=False):
         """update ax with new image data"""
         if (not self.__initialized__): self.Build()
+        if (self.colorbar_enabled != colorbar):
+            self.colorbar_enabled = colorbar
+            self.rebuild()
+            ax = self.ax_ct
 
         origin = 'lower' if flipy else 'upper'
         if origin != self.origin:
@@ -89,7 +109,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
         # if nothing is drawn yet, add axes instance
         if len(ax.get_images()) == 0:
             try:
-                ax.imshow(data, cmap=cmap, origin=origin)
+                ax_img = ax.imshow(data, cmap=cmap, origin=origin)
             except Exception as e:
                 print(e)
                 return
@@ -102,6 +122,8 @@ class FigureDefinition_Summary(baseFigureDefinition):
             ax.autoscale_view()
             if self.autoscale:
                 ax_img.autoscale()  # scale colormap to current data (vmin/vmax)
+        if self.colorbar_enabled:
+            plt.colorbar(ax_img, self.ax_colorbar)
         self.canvas.draw()
 
     def clearContour(self, ax):

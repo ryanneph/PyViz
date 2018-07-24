@@ -51,6 +51,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.cmap_manual_sel = False
 
         ########### Setup Signal/slot connections #################
+        self.chk_recursive.stateChanged.connect(self.__slot_chk_recursive_statechanged__)
         self.chk_autoscale.stateChanged.connect(self.__slot_autoscale_changed)
         self.combo_cmap.activated.connect(self.__slot_change_cmap__)
         self.combo_orientslice.activated.connect(self.__slot_orient_changed)
@@ -204,7 +205,7 @@ class Main(QMainWindow, Ui_MainWindow):
 
             ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation, size=manual_size)
             if ctdata is not None:
-                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip)
+                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip, colorbar=self.chk_colorbar.isChecked())
             else: self.figdef.clearContour(self.figdef.ax_ct)
 
 
@@ -215,13 +216,17 @@ class Main(QMainWindow, Ui_MainWindow):
             # reset auto cmap selection
             self.cmap_manual_sel = False
 
+    def __slot_chk_recursive_statechanged__(self, boolchecked):
+        self.lastValidPath = ''
+        self.__slot_txtPath_editingFinished__()
+
     def __loadDirectory__(self, root):
         """recursively find all BaseVolume objects contained in pickle files under root"""
         if (not root == self.lastValidPath):
             if (os.path.exists(root)):
                 self.statusBar.showMessage('Rebuilding Data List, wait...')
                 self.lastValidPath = root
-                img_path_list, mask_path_list, feature_path_list = self.getImageFiles(root, recursive=True)
+                img_path_list, mask_path_list, feature_path_list = self.getImageFiles(root, recursive=self.chk_recursive.isChecked())
                 self.listImages.clear()
                 self.listImages.addItems(sorted(img_path_list))
                 #  self.listMasks.clear()
