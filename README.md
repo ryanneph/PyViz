@@ -4,7 +4,8 @@ PyViz grew out of a necessity to be able to easily view volumetric image data co
 
 This project currently supports the following types of data:
 * raw/bin - linear packing of float/double data, assumed to be in C-major ordering (z-index: slowest, x-index: fastest)
-* dicom - either as a single dicom slice (.dcm file) or as a directory containing all slices in a series.
+* npy/npz - currently supports automatic unpacking of the *first* array in the .npz file. Future versions will allow selection of other arrays
+* dicom - either as a single dicom slice (.dcm file) or as a directory containing all slices in a series. (required: *[pydicom](https://pydicom.github.io/)*, *[pymedimage](https://github.com/ryanneph/PyMedImage)*)
 
 The functionality can be easily extended for other proprietary formats as well.
 
@@ -14,7 +15,7 @@ The functionality can be easily extended for other proprietary formats as well.
 ## Installing
 Open a terminal window and enter:
 ``` bash
-pip install --process-dependency-links git+git://github.com/ryanneph/PyViz.git#egg=PyViz
+pip3 install --process-dependency-links git+git://github.com/ryanneph/PyViz.git#egg=PyViz
 ```
 
 ## Development
@@ -22,7 +23,7 @@ Open a terminal window and enter:
 ``` bash
 git clone https://github.com/ryanneph/PyViz.git
 cd PyViz
-pip install -e --process-dependency-links .
+pip3 install -e --process-dependency-links .
 ```
 
 ## Running

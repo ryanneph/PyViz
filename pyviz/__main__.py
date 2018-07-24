@@ -9,7 +9,10 @@ from PyQt5 import QtWidgets
 def main(args=None):
     app = QtWidgets.QApplication(sys.argv)
     main = pyviz.gui.Main()
-    path = os.path.expanduser('~')
+    if len(sys.argv) > 1 and os.path.exists(sys.argv[1]):
+        path = sys.argv[1]
+    else:
+        path = os.path.expanduser('~')
     main.txtPath.setText(path)
     main.show()
     sys.exit(app.exec_())

@@ -189,6 +189,7 @@ class ImageDataProvider(BaseDataProvider):
         self.loaders = []
         self._addLoader(self._loadFromMat, ['.mat'])
         self._addLoader(self._loadFromLegacyDoseMat, ['.mat'])
+        self._addLoader(self._loadFromNpy, ['.npy', '.npz'])
         self._addLoader(self._loadFromH5, ['.h5', '.hdf5', '.dose', '.fmap'])
         self._addLoader(self._loadFromDicom, ['', '.dcm', '.dicom'])
         self._addLoader(self._loadFromBinWithSize, ['', '.bin', '.raw'])
@@ -268,6 +269,13 @@ class ImageDataProvider(BaseDataProvider):
         import sparse2dense.recon
         vol = sparse2dense.recon.reconstruct_from_dosecalc_mat(filepath)
         return vol
+
+    def _loadFromNpy(self, filepath, *args, **kwargs):
+        data = np.load(filepath)
+        if isinstance(data, np.ndarray):
+            return data
+        else:
+            return next(iter(data.values()))
 
     def _loadFromDicom(self, filepath, *args, **kwargs):
         import pymedimage.rttypes as rttypes
