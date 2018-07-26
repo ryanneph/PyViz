@@ -51,8 +51,9 @@ class Main(QMainWindow, Ui_MainWindow):
         self.cmap_manual_sel = False
 
         ########### Setup Signal/slot connections #################
-        self.chk_recursive.stateChanged.connect(self.__slot_chk_recursive_statechanged__)
+        #  self.chk_recursive.stateChanged.connect(self.__slot_chk_recursive_statechanged__)
         self.chk_autoscale.stateChanged.connect(self.__slot_autoscale_changed)
+        self.chk_colorbar.stateChanged.connect(self.__slot_colorbar_changed)
         self.combo_cmap.activated.connect(self.__slot_change_cmap__)
         self.combo_orientslice.activated.connect(self.__slot_orient_changed)
         self.combo_yaxis.activated.connect(self.__slot_simple_update_image__)
@@ -66,6 +67,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.listImages.currentTextChanged.connect(self.__slot_listGeneric_currentTextChanged__)
         #  self.listMasks.currentTextChanged.connect(self.__slot_listMasks_currentTextChanged__)
         self.btn_Refresh.clicked.connect(self.__slot_refreshImage)
+        self.btn_ReloadPath.clicked.connect(self.__slot_reloadPath)
         ###########################################################
 
         # get list of cmap names
@@ -73,12 +75,19 @@ class Main(QMainWindow, Ui_MainWindow):
 
         # self.__refresh_feature_names__(self.txtPath.text())
         self.figdef = pvh.FigureDefinition_Summary()
+        self.figdef.colorbar_enabled = self.chk_colorbar.isChecked()
         self.figdef.Build()
         self.__updateCanvas__(self.figdef)
 
     def __slot_autoscale_changed(self, state):
         self.figdef.autoscale = (state==2)
         self.__updateImage__()
+
+    def __slot_colorbar_changed(self, state):
+        self.figdef.colorbar_enabled = state
+        self.figdef.rebuild()
+        self.__slot_refreshImage()
+        self.__updateCanvas__(self.figdef)
 
     def __slot_orient_changed(self, idx):
         orientation = self.combo_orientslice.currentText()
@@ -205,7 +214,7 @@ class Main(QMainWindow, Ui_MainWindow):
 
             ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation, size=manual_size)
             if ctdata is not None:
-                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip, colorbar=self.chk_colorbar.isChecked())
+                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip)
             else: self.figdef.clearContour(self.figdef.ax_ct)
 
 
@@ -216,7 +225,7 @@ class Main(QMainWindow, Ui_MainWindow):
             # reset auto cmap selection
             self.cmap_manual_sel = False
 
-    def __slot_chk_recursive_statechanged__(self, boolchecked):
+    def __slot_reloadPath(self):
         self.lastValidPath = ''
         self.__slot_txtPath_editingFinished__()
 
@@ -266,7 +275,7 @@ class Main(QMainWindow, Ui_MainWindow):
         if (self.lastValidPath):
             default_dir = os.path.dirname(self.lastValidPath)
         else: default_dir = None
-        foldername = QFileDialog.getExistingDirectory(self, 'Open DOI', directory=default_dir)
+        foldername = QFileDialog.getExistingDirectory(self, 'Open DOI')#, directory=default_dir)
         if foldername is not None and foldername!='':
             self.txtPath.setText(foldername)
             self.__slot_txtPath_editingFinished__()

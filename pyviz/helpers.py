@@ -37,7 +37,7 @@ class baseFigureDefinition:
         self.figure = None
         self.canvas = None
         self.contours = None
-        self.__initialized__ = None
+        self._initialized = None
 
     # must be redefined by subclass
     @abstractmethod
@@ -45,14 +45,14 @@ class baseFigureDefinition:
         self.figure = fig
         self.canvas = FigureCanvas(self.figure)
         self.canvas.draw()
-        self.__initialized__ = True
+        self._initialized = True
 
 class FigureDefinition_Summary(baseFigureDefinition):
     def __init__(self):
         super().__init__()
         self.ax_ct = None
         self.ax_colorbar = None
-        self.colorbar_enabled = True
+        self.colorbar_enabled = False
         self.origin = None
         self.autoscale = True
 
@@ -68,7 +68,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
         #  for ax in fig.get_axes():
         #      ax.set_axis_off()
 
-        if not self.__initialized__:
+        if not self._initialized:
             # setup imagedataproviders
             self.ctprovider = ImageDataProvider()
             self.featureprovider = ImageDataProvider()
@@ -77,8 +77,10 @@ class FigureDefinition_Summary(baseFigureDefinition):
         super().Build(fig)
 
     def rebuild(self):
+        self.clearAxes()
         self.ax_ct = None
         self.ax_colorbar = None
+        self.figure.clear()
         plt.close(self.figure)
         self.Build()
 
@@ -93,13 +95,10 @@ class FigureDefinition_Summary(baseFigureDefinition):
             self.clearContour(ax)
         self.canvas.draw()
 
-    def drawImage(self, ax, data, cmap='gray', flipy=False, colorbar=False):
+    def drawImage(self, ax, data, cmap='gray', flipy=False):
         """update ax with new image data"""
-        if (not self.__initialized__): self.Build()
-        if (self.colorbar_enabled != colorbar):
-            self.colorbar_enabled = colorbar
-            self.rebuild()
-            ax = self.ax_ct
+        if (not self._initialized):
+            self.Build()
 
         origin = 'lower' if flipy else 'upper'
         if origin != self.origin:
