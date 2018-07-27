@@ -84,6 +84,9 @@ class FigureDefinition_Summary(baseFigureDefinition):
         plt.close(self.figure)
         self.Build()
 
+    def redrawCanvas(self):
+        self.canvas.draw()
+
     def clearAxes(self, ax=None):
         if not ax:
             ax_list = [x for x in self.figure.get_axes()]

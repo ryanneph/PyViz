@@ -122,12 +122,6 @@ class Main(QMainWindow, Ui_MainWindow):
                 except:
                     print('couldn\'t close figure')
                 widget.close()
-            #self.mplvl.removeWidget(self.canvas)
-            #self.canvas.close()
-            #self.mplvl.removeWidget(self.toolbar)
-            #self.toolbar.close()
-            #self.canvas.draw()
-
 
     def setSliceNum(self, n):
         self.num_Slice.valueChanged.disconnect(self.__slot_changefig_sliceNum__)
@@ -168,6 +162,10 @@ class Main(QMainWindow, Ui_MainWindow):
             basepath = str(self.txtPath.text())
             relpath = currentText.lstrip('./')
             fullpath = os.path.join(basepath, relpath)
+            if self.lastValidFile != fullpath:
+                redraw_canvas = True
+            else:
+                redraw_canvas = False
             self.lastValidFile = fullpath
         else: fullpath = None
 
@@ -214,6 +212,10 @@ class Main(QMainWindow, Ui_MainWindow):
 
             ctdata = self.figdef.ctprovider.getImageSlice(fullpath, slicenum, orientation, size=manual_size)
             if ctdata is not None:
+                if redraw_canvas:
+                    #TODO this works but is overkill, we just need to reset the scaling of the current canvas
+                    self.figdef.rebuild()
+                    self.__updateCanvas__(self.figdef)
                 self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip)
             else: self.figdef.clearContour(self.figdef.ax_ct)
 
