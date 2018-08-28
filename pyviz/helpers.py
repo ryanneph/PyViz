@@ -54,7 +54,16 @@ class FigureDefinition_Summary(baseFigureDefinition):
         self.ax_colorbar = None
         self.colorbar_enabled = False
         self.origin = None
-        self.autoscale = True
+        self._autoscale = True
+        self.clim = None
+
+    @property
+    def autoscale(self):
+        return self._autoscale
+
+    @autoscale.setter
+    def autoscale(self, v):
+        self._autoscale = bool(v)
 
     def Build(self):
         fig = Figure()
@@ -77,6 +86,10 @@ class FigureDefinition_Summary(baseFigureDefinition):
         super().Build(fig)
 
     def rebuild(self):
+        if not self.autoscale and len(self.ax_ct.get_images())>0:
+            self.clim = self.ax_ct.get_images()[0].get_clim()
+        else:
+            self.clim = None
         self.clearAxes()
         self.ax_ct = None
         self.ax_colorbar = None
@@ -126,6 +139,10 @@ class FigureDefinition_Summary(baseFigureDefinition):
                 ax_img.autoscale()  # scale colormap to current data (vmin/vmax)
         if self.colorbar_enabled:
             plt.colorbar(ax_img, self.ax_colorbar)
+        if not self.autoscale:
+            if self.clim is not None:
+                ax_img.set_clim(*self.clim)
+                self.clim = None
         self.canvas.draw()
 
     def clearContour(self, ax):
