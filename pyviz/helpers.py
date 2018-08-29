@@ -94,7 +94,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
         self.ax_ct = None
         self.ax_colorbar = None
         self.figure.clear()
-        plt.close(self.figure)
+        #  plt.close(self.figure)
         self.Build()
 
     def redrawCanvas(self):
@@ -224,6 +224,9 @@ class BaseDataProvider:
         else: return 0
 
 class ImageDataProvider(BaseDataProvider):
+    image_extensions = ['.png', '.jpg', '.jpeg', '.bmp']
+    dicom_extensions = ['.dcm', '.dicom']
+
     def __init__(self):
         super().__init__()
         self.valid_exts = set()
@@ -232,7 +235,7 @@ class ImageDataProvider(BaseDataProvider):
         self._addLoader(self._loadFromLegacyDoseMat, ['.mat'])
         self._addLoader(self._loadFromNpy, ['.npy', '.npz'])
         self._addLoader(self._loadFromH5, ['.h5', '.hdf5', '.dose', '.fmap'])
-        self._addLoader(self._loadFromDicom, ['', '.dcm', '.dicom'])
+        self._addLoader(self._loadFromDicom, ['']+self.dicom_extensions)
         self._addLoader(self._loadFromBinWithSize, ['', '.bin', '.raw'])
         self._addLoader(self._loadFromCTIBin, ['.cti', '.ctislice', '.seg'])
         self._addLoader(self._loadFromBin, ['', '.bin', '.raw'])
@@ -319,18 +322,32 @@ class ImageDataProvider(BaseDataProvider):
             return next(iter(data.values()))
 
     def _loadFromDicom(self, filepath, *args, **kwargs):
-        import pymedimage.rttypes as rttypes
-        if os.path.splitext(filepath)[1] == '':
+        import pydicom
+        import dicom_numpy
+        if os.path.splitext(filepath)[1] not in self.dicom_extensions:
             if not os.path.isdir(filepath):
                 raise TypeError('file must be a directory containing dicom files or a single dicom file')
-            return rttypes.BaseVolume.fromDir(filepath).data
+            dcm_datasets = [pydicom.dcmread(os.path.join(filepath, x)) for x in os.listdir(filepath) if os.path.splitext(x)[1] in self.dicom_extensions]
+            vol, _ = dicom_numpy.combine_slices(dcm_datasets)
+            vol = vol.transpose(2,1,0).copy("C")
+            return vol
         else:
-            return rttypes.BaseVolume.fromDicom(filepath).data
+            return np.expand_dims(pydicom.dcmread(filepath).pixel_array, axis=0)
         return None
 
     def __fileLoader__(self, filepath, size=None):
         excepts = []
         attempts = 0
+        if os.path.isdir(filepath):
+            try:
+                vol = self._loadFromDicom(filepath)
+                if vol is not None:
+                    self._cachedsize = vol.shape[::-1]
+                    return vol
+            except Exception as e:
+                excepts.append(e)
+                self.resetCache()
+
         while attempts < len(self.loaders):
             attempts += 1
             try:
