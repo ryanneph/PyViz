@@ -56,7 +56,8 @@ class Main(QMainWindow, Ui_MainWindow):
         self.chk_colorbar.stateChanged.connect(self.__slot_colorbar_changed)
         self.combo_cmap.activated.connect(self.__slot_change_cmap__)
         self.combo_orientslice.activated.connect(self.__slot_orient_changed)
-        self.combo_yaxis.activated.connect(self.__slot_simple_update_image__)
+        self.chk_flipx.stateChanged.connect(self.__slot_refreshImage)
+        self.chk_flipy.stateChanged.connect(self.__slot_refreshImage)
         # self.combo_ModeSelect.currentIndexChanged['QString'].connect(self.__slot_changefig_figselect__)
         self.txtPath.editingFinished.connect(self.__slot_txtPath_editingFinished__)
         self.num_Slice.setKeyboardTracking(False)
@@ -92,21 +93,18 @@ class Main(QMainWindow, Ui_MainWindow):
     def __slot_orient_changed(self, idx):
         orientation = self.combo_orientslice.currentText()
         if (orientation.lower() == 'coronal (y)'):
-            self.combo_yaxis.setCurrentText('Lower')
+            self.chk_flipy.setChecked(True)
         elif (orientation.lower() == 'sagittal (x)'):
-            self.combo_yaxis.setCurrentText('Lower')
+            self.chk_flipy.setChecked(True)
         else:
-            self.combo_yaxis.setCurrentText('Upper')
+            self.chk_flipy.setChecked(False)
         self.figdef.rebuild()
-        self.__slot_simple_update_image__(idx)
+        self.__updateImage__(idx)
         self.__updateCanvas__(self.figdef)
 
     def __slot_change_cmap__(self, idx):
         self.cmap_manual_sel = True
         self.figdef.clearAxes()
-        self.__updateImage__()
-
-    def __slot_simple_update_image__(self, idx):
         self.__updateImage__()
 
     def __updateCanvas__(self, figdef):
@@ -140,7 +138,7 @@ class Main(QMainWindow, Ui_MainWindow):
     def getSliceNum(self):
         return int(self.num_Slice.value())
 
-    def __slot_refreshImage(self):
+    def __slot_refreshImage(self, *args):
         self.figdef.ctprovider.resetCache()
         self.__updateImage__()
 
@@ -153,7 +151,7 @@ class Main(QMainWindow, Ui_MainWindow):
     #      if currentText:
     #          self.__updateImage__()
 
-    def __updateImage__(self):
+    def __updateImage__(self, *args):
         # get CT filepath
         if self.listImages.currentItem():
             currentText = self.listImages.currentItem().text()
@@ -189,9 +187,8 @@ class Main(QMainWindow, Ui_MainWindow):
             else:
                 orientation = 0 # axial
 
-            yaxis_flip = self.combo_yaxis.currentText()
-            if (yaxis_flip.lower() == 'lower'): yaxis_flip = True
-            else: yaxis_flip = False
+            xaxis_flip = self.chk_flipx.isChecked()
+            yaxis_flip = self.chk_flipy.isChecked()
 
             realslicecount = self.figdef.ctprovider.getSliceCount(fullpath, orientation, manual_size)
             if realslicecount <= slicenum:
@@ -215,7 +212,7 @@ class Main(QMainWindow, Ui_MainWindow):
                     #TODO this works but is overkill, we just need to reset the scaling of the current canvas
                     self.figdef.rebuild()
                     self.__updateCanvas__(self.figdef)
-                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip, aspect_ratio=aspect_ratio)
+                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipx=xaxis_flip, flipy=yaxis_flip, aspect_ratio=aspect_ratio)
             else: self.figdef.clearContour(self.figdef.ax_ct)
 
 

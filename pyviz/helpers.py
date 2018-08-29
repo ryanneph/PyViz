@@ -53,7 +53,6 @@ class FigureDefinition_Summary(baseFigureDefinition):
         self.ax_ct = None
         self.ax_colorbar = None
         self.colorbar_enabled = False
-        self.origin = None
         self._autoscale = True
         self.trueaspect = True
         self.clim = None
@@ -116,20 +115,20 @@ class FigureDefinition_Summary(baseFigureDefinition):
             self.clearContour(ax)
         self.canvas.draw()
 
-    def drawImage(self, ax, data, cmap='gray', flipy=False, aspect_ratio=None):
+    def drawImage(self, ax, data, cmap='gray', flipx=False, flipy=False, aspect_ratio=None):
         """update ax with new image data"""
         if (not self._initialized):
             self.Build()
 
-        origin = 'lower' if flipy else 'upper'
-        if origin != self.origin:
-            self.origin = origin
-            self.clearAxes()
+        if flipx:
+            data = np.fliplr(data)
+        if flipy:
+            data = np.flipud(data)
 
         # if nothing is drawn yet, add axes instance
         if len(ax.get_images()) == 0:
             try:
-                ax_img = ax.imshow(data, cmap=cmap, origin=origin, aspect=aspect_ratio if self.trueaspect else 'auto')
+                ax_img = ax.imshow(data, cmap=cmap, aspect=aspect_ratio if self.trueaspect else 'auto')
             except Exception as e:
                 print(e)
                 return
