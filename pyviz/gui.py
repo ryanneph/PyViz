@@ -91,13 +91,15 @@ class Main(QMainWindow, Ui_MainWindow):
 
     def __slot_orient_changed(self, idx):
         orientation = self.combo_orientslice.currentText()
-        if (orientation.lower() == 'coronal'):
+        if (orientation.lower() == 'coronal (y)'):
             self.combo_yaxis.setCurrentText('Lower')
-        elif (orientation.lower() == 'sagittal'):
+        elif (orientation.lower() == 'sagittal (x)'):
             self.combo_yaxis.setCurrentText('Lower')
         else:
             self.combo_yaxis.setCurrentText('Upper')
+        self.figdef.rebuild()
         self.__slot_simple_update_image__(idx)
+        self.__updateCanvas__(self.figdef)
 
     def __slot_change_cmap__(self, idx):
         self.cmap_manual_sel = True
@@ -117,10 +119,6 @@ class Main(QMainWindow, Ui_MainWindow):
             widget = self.mplvl.takeAt(cnt).widget()
             if widget is not None:
                 # widget will be None if the item is a layout
-                try:
-                    widget.figure.close()
-                except:
-                    print('couldn\'t close figure')
                 widget.close()
 
     def setSliceNum(self, n):
@@ -184,9 +182,9 @@ class Main(QMainWindow, Ui_MainWindow):
             except: manual_size = None
 
             orientation = self.combo_orientslice.currentText()
-            if (orientation.lower() == 'coronal'):
+            if (orientation.lower() == 'coronal (y)'):
                 orientation = 1
-            elif (orientation.lower() == 'sagittal'):
+            elif (orientation.lower() == 'sagittal (x)'):
                 orientation = 2
             else:
                 orientation = 0 # axial
@@ -204,6 +202,7 @@ class Main(QMainWindow, Ui_MainWindow):
             self.setSliceMin(0)
 
             realsize = self.figdef.ctprovider.getSize()
+            aspect_ratio = self.figdef.ctprovider.getAspect(orientation)
             if realsize is None:
                 realsize = ['', '', '']
             self.txt_nx.setText(str(realsize[0]))
@@ -216,7 +215,7 @@ class Main(QMainWindow, Ui_MainWindow):
                     #TODO this works but is overkill, we just need to reset the scaling of the current canvas
                     self.figdef.rebuild()
                     self.__updateCanvas__(self.figdef)
-                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip)
+                self.figdef.drawImage(self.figdef.ax_ct, ctdata, cmap=cmap, flipy=yaxis_flip, aspect_ratio=aspect_ratio)
             else: self.figdef.clearContour(self.figdef.ax_ct)
 
 
@@ -252,7 +251,6 @@ class Main(QMainWindow, Ui_MainWindow):
 
 
     def __slot_changefig_sliceNum__(self, sliceNum):
-        c = self.figdef.drawImage # matplotlib.Figure.Canvas
         self.__updateImage__()
 
     def __slot_PrevSlice_clicked__(self, checkedbool):

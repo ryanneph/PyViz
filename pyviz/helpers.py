@@ -55,6 +55,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
         self.colorbar_enabled = False
         self.origin = None
         self._autoscale = True
+        self.trueaspect = True
         self.clim = None
 
     @property
@@ -90,12 +91,16 @@ class FigureDefinition_Summary(baseFigureDefinition):
             self.clim = self.ax_ct.get_images()[0].get_clim()
         else:
             self.clim = None
+        self.Close()
+        self.Build()
+
+    def Close(self):
         self.clearAxes()
         self.ax_ct = None
         self.ax_colorbar = None
         self.figure.clear()
-        #  plt.close(self.figure)
-        self.Build()
+        plt.close(self.figure)
+
 
     def redrawCanvas(self):
         self.canvas.draw()
@@ -111,7 +116,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
             self.clearContour(ax)
         self.canvas.draw()
 
-    def drawImage(self, ax, data, cmap='gray', flipy=False):
+    def drawImage(self, ax, data, cmap='gray', flipy=False, aspect_ratio=None):
         """update ax with new image data"""
         if (not self._initialized):
             self.Build()
@@ -124,7 +129,7 @@ class FigureDefinition_Summary(baseFigureDefinition):
         # if nothing is drawn yet, add axes instance
         if len(ax.get_images()) == 0:
             try:
-                ax_img = ax.imshow(data, cmap=cmap, origin=origin)
+                ax_img = ax.imshow(data, cmap=cmap, origin=origin, aspect=aspect_ratio if self.trueaspect else 'auto')
             except Exception as e:
                 print(e)
                 return
@@ -213,7 +218,7 @@ class BaseDataProvider:
                     elif orientation==1:
                         slice = self.__cachedimage__[:, slicenum, :]
                     else:
-                        slice = self.__cachedimage__[:, :, slicenum]
+                        slice = np.fliplr(self.__cachedimage__[:, :, slicenum])
                     return slice
         except Exception as e:
             print(e)
@@ -241,6 +246,7 @@ class ImageDataProvider(BaseDataProvider):
         self._addLoader(self._loadFromBin, ['', '.bin', '.raw'])
 
         self._cached_size = None
+        self._cached_affine_matrix = None
 
     def _addLoader(self, callable, valid_exts=[]):
         self.loaders.append({"callable": callable, "valid_exts": [str(x).lower() for x in valid_exts]})
@@ -250,6 +256,19 @@ class ImageDataProvider(BaseDataProvider):
     def getSize(self):
         return self._cachedsize
 
+    def getAspect(self, orientation):
+        if self._cached_affine_matrix is None:
+            return None
+
+        a = self._cached_affine_matrix
+        if orientation == 0: # axial
+            aspect = a[1,1]/a[0,0]
+        elif orientation == 1: # coronal
+            aspect = a[2,2]/a[0,0]
+        elif orientation == 2: # sagittal
+            aspect = a[2,2]/a[1,1]
+        return aspect
+
     def getValidExtensions(self):
         return list(self.valid_exts)
 
@@ -257,6 +276,7 @@ class ImageDataProvider(BaseDataProvider):
         self.__cachedimage__ = None
         self.__cachedimagepath__ = None
         self._cachedsize = None
+        self._cached_affine_matrix = None
 
     def _loadFromBinWithSize(self, filepath, *args, **kwargs):
         with open(filepath, 'rb') as fd:
@@ -328,8 +348,9 @@ class ImageDataProvider(BaseDataProvider):
             if not os.path.isdir(filepath):
                 raise TypeError('file must be a directory containing dicom files or a single dicom file')
             dcm_datasets = [pydicom.dcmread(os.path.join(filepath, x)) for x in os.listdir(filepath) if os.path.splitext(x)[1] in self.dicom_extensions]
-            vol, _ = dicom_numpy.combine_slices(dcm_datasets)
+            vol, affine = dicom_numpy.combine_slices(dcm_datasets)
             vol = vol.transpose(2,1,0).copy("C")
+            self._cached_affine_matrix = affine
             return vol
         else:
             return np.expand_dims(pydicom.dcmread(filepath).pixel_array, axis=0)

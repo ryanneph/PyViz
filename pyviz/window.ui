@@ -261,7 +261,7 @@
          <bool>false</bool>
         </property>
         <property name="currentText">
-         <string>Axial</string>
+         <string>Axial (Z)</string>
         </property>
         <property name="currentIndex">
          <number>0</number>
@@ -274,17 +274,17 @@
         </property>
         <item>
          <property name="text">
-          <string>Axial</string>
+          <string>Axial (Z)</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Coronal</string>
+          <string>Coronal (Y)</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Sagittal</string>
+          <string>Sagittal (X)</string>
          </property>
         </item>
        </widget>
