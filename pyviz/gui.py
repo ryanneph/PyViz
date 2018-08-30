@@ -25,6 +25,7 @@ from matplotlib.colors import ListedColormap
 sys.path.insert(0, FILE_DIR)
 import helpers as pvh
 from helpers import isFileByExt
+import version
 
 # Load QT UI as main window
 # change cwd to that which contains the entry module (this file/run script)
@@ -42,6 +43,7 @@ class Main(QMainWindow, Ui_MainWindow):
         # initialize the gui window
         super(Main, self).__init__()
         self.setupUi(self)
+        self.setWindowTitle("PyViz - Volumetric Data Viewer (v{!s})".format(version.get_version()))
 
         # init cache variables
         self.lastValidPath = None
@@ -303,12 +305,17 @@ class Main(QMainWindow, Ui_MainWindow):
         return (image_path_list, mask_path_list, feature_path_list)
 
 
-#  # Start GUI window
-#  if __name__ == '__main__':
-#      app = QtWidgets.QApplication(sys.argv)
-#      main = Main()
-#      path = os.getcwd()
-#      main.txtPath.setText(path)
-#      main.txtPath.editingFinished.emit()
-#      main.show()
-#      sys.exit(app.exec_())
+def start_gui():
+    app = QtWidgets.QApplication(sys.argv)
+    main = Main()
+    if len(sys.argv) > 1 and os.path.exists(sys.argv[1]):
+        path = sys.argv[1]
+    else:
+        path = os.path.expanduser('~')
+    main.txtPath.setText(path)
+    main.show()
+    return app.exec_()
+
+# Start GUI window
+if __name__ == '__main__':
+    sys.exit(start_gui())

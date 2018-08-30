@@ -15,7 +15,13 @@ The functionality can be easily extended for other proprietary formats as well.
 ## Installing
 Open a terminal window and enter:
 ``` bash
-pip3 install --process-dependency-links git+git://github.com/ryanneph/PyViz.git#egg=PyViz
+pip3 install git+git://github.com/ryanneph/PyViz.git#egg=PyViz
+```
+
+## Updating
+Open a terminal window and enter:
+``` bash
+pip3 install --upgrade git+git://github.com/ryanneph/PyViz.git#egg=PyViz
 ```
 
 ## Development
@@ -27,12 +33,18 @@ pip3 install -e --process-dependency-links .
 ```
 
 ## Running
-Open a terminal window and enter:
+PyViz can be run directly by opening a terminal and running:
+``` bash
+cd PyViz
+python3 pyviz/gui.py
+```
+or can be run from any location after installation by opening a terminal and running:
 ``` bash
 pyviz
 ```
 * Select a directory which will be recursively searched for `.bin`/`.raw`/`.dcm` files
 * For dicom files, simply select from the list and the array size will be automatically detected
+* To open a dicom series (stack of 2D slices), navigate to the _parent_ of the directory containing the `.dcm` files and select the containing directory from the list in the gui window.
 * For raw/bin files, first enter the X, Y, Z array sizes into the text fields below the list, then select the file
 
 

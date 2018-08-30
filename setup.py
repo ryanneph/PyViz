@@ -2,15 +2,17 @@
 
 from distutils.core import setup
 
+import pyviz.version
+
 setup(name="PyViz",
-      version='1.0',
+      version=pyviz.version.get_version(),
       description="Simple and flexible raw data viewer (2d & 3d image data)",
       author="Ryan Neph",
       author_email="neph320@gmail.com",
       url="https://github.com/ryanneph/PyViz",
       packages=['pyviz',],
       entry_points={
-          'gui_scripts': ['pyviz = pyviz.__main__:main'],
+          'gui_scripts': ['pyviz = pyviz.gui:start_gui'],
       },
       package_data={'pyviz': ['window.ui']},
       install_requires=[
@@ -19,12 +21,7 @@ setup(name="PyViz",
           'h5py',
           'pyqt5',
           'numpy',
-
-          'sparse2dense',
-          'pymedimage',
+          'pydicom',
+          'dicom-numpy',
           ],
-      dependency_links=[
-          'git+git://github.com/ryanneph/Sparse2Dense.git#egg=sparse2dense-0',
-          'git+git://github.com/ryanneph/PyMedImage.git#egg=pymedimage-0',
-      ]
       )
