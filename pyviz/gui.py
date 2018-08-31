@@ -10,6 +10,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QErrorMessage, QFileDialog
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 matplotlib.use('Qt5Agg')
 
 import os, sys
@@ -74,7 +75,8 @@ class Main(QMainWindow, Ui_MainWindow):
         ###########################################################
 
         # get list of cmap names
-        self.combo_cmap.addItems(list(plt.cm.datad)+list(plt.cm.cmaps_listed))
+        #  self.combo_cmap.addItems(list(plt.cm.datad)+list(plt.cm.cmaps_listed))
+        self.combo_cmap.addItems(list(cm.cmap_d.keys()))
 
         # self.__refresh_feature_names__(self.txtPath.text())
         self.figdef = pvh.FigureDefinition_Summary()
@@ -172,7 +174,7 @@ class Main(QMainWindow, Ui_MainWindow):
         if fullpath:
             # cmap selection
             if not self.cmap_manual_sel:
-                cmap='gray'
+                cmap='viridis'
                 try: self.combo_cmap.setCurrentIndex(self.combo_cmap.findText(cmap))
                 except: pass
             else:
